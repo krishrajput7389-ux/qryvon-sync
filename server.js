@@ -76,11 +76,35 @@ app.get('/api/settings', async (req, res) => {
   res.json(result.rows[0]);
 });
 
-app.post('/api/admin/settings', async (req, res) => {
-  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
-  const { reg_deadline, scan_date } = req.body;
-  await pool.query('UPDATE settings SET reg_deadline = $1, scan_date = $2 WHERE id = 1', [reg_deadline, scan_date]);
-  res.json({ success: true });
+app.post('/api/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  
+  const existing = await pool.query('SELECT id FROM attendees WHERE email = $1', [email.toLowerCase().trim()]);
+  if (existing.rowCount > 0) return res.status(400).json({ error: 'Email already registered.' });
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(email.toLowerCase().trim(), { otp, expires: Date.now() + 10 * 60000 });
+
+  try {
+    const response = await fetch(process.env.SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        subject: 'Qryvon Sync Registration OTP',
+        html: `<h3>Welcome to Qryvon Sync!</h3><p>Your registration OTP is: <strong>${otp}</strong></p>`
+      })
+    });
+    
+    if (response.ok) {
+      res.json({ success: true });
+    } else {
+      throw new Error('API Failed');
+    }
+  } catch (error) { 
+    res.status(500).json({ error: 'Failed to send OTP.' }); 
+  }
 });
 
 app.get('/api/status', async (req, res) => {
