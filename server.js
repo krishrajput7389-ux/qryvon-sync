@@ -14,7 +14,9 @@ const pool = new Pool({
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanner.html')));
 
 // Initialize PostgreSQL Tables
 async function initDB() {
