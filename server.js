@@ -93,7 +93,7 @@ app.post('/api/send-otp', async (req, res) => {
       body: JSON.stringify({
         to: email,
         subject: 'Qryvon Sync Registration OTP',
-        html: `<h3>We see you. Your Qryvon Sync '26 registration is one step away from being locked in.👾 Drop this into the portal before it expires in 10 minutes to secure your spot. See you at the hackathon!🎊</h3><p>Your registration OTP is: <strong>${otp}</strong></p>`
+        html: `<h3>We see you. Your Qryvon Sync '26 registration is one step away from being locked in. Drop this into the portal before it expires in 10 minutes to secure your spot. See you at the hackathon!</h3><p>Your registration OTP is: <strong>${otp}</strong></p>`
       })
     });
     
@@ -129,7 +129,7 @@ app.post('/api/send-otp', async (req, res) => {
       to: email,
       subject: 'Qryvon Sync Registration OTP',
       text: `Your OTP is: ${otp}. It expires in 10 minutes.`,
-      html: `<h3>We see you. Your Qryvon Sync '26 registration is one step away from being locked in.👾 Drop this into the portal before it expires in 10 minutes to secure your spot. See you at the hackathon!🎊<strong>${otp}</strong></p>`
+      html: `<h3>We see you. Your Qryvon Sync '26 registration is one step away from being locked in. Drop this into the portal before it expires in 10 minutes to secure your spot. See you at the hackathon!<strong>${otp}</strong></p>`
     });
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: 'Failed to send OTP.' }); }
