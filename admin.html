@@ -115,6 +115,14 @@
           <td class="p-4"><div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${a.checked_in ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30'}">${a.checked_in ? '✅ CHECKED IN' : '⏳ PENDING'}</div>${a.checked_in_at ? `<div class="text-[#C4B5FD]/50 text-[10px] mt-1">${a.checked_in_at}</div>` : ''}</td>
         </tr>
       `).join('');
+      // Example helper for rendering clickable links inside your row/modal:
+const githubBadge = a.github_link 
+  ? `<a href="${a.github_link}" target="_blank" class="text-xs bg-slate-800 text-sky-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700">GitHub ↗</a>` 
+  : `<span class="text-xs text-slate-500">No GitHub</span>`;
+
+const itchBadge = a.itchio_link 
+  ? `<a href="${a.itchio_link}" target="_blank" class="text-xs bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700">Itch.io ↗</a>` 
+  : `<span class="text-xs text-slate-500">No Itch</span>`;
     }
     checkAuth();
   </script>
