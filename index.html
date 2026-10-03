@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Qryvon Sync '26 | Registration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    .bg-qryvon-dark { background-color: #050e0a; } 
+    .text-qryvon-lavender { color: #C4B5FD; } 
+    .border-qryvon-lavender { border-color: #C4B5FD; }
+    .bg-qryvon-gold { background-color: #FFD700; } 
+    
+    /* Input styling for Dark Green theme */
+    input, select {
+      background-color: rgba(10, 31, 24, 0.6) !important;
+      border: 1px solid rgba(196, 181, 253, 0.3) !important;
+      color: white !important;
+      transition: all 0.3s ease;
+    }
+    input:focus, select:focus {
+      border-color: #FFD700 !important;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+      outline: none;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.7); cursor: pointer; }
+    
+    /* Custom glow animation */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.7; }
+    }
+    .animate-ambient { animation: pulse-glow 6s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-qryvon-dark text-slate-100 min-h-screen flex items-center justify-center p-4 font-sans relative overflow-x-hidden">
+  
+  <!-- Ambient Background Glows -->
+  <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#C4B5FD] rounded-full blur-[120px] mix-blend-screen animate-ambient opacity-20 pointer-events-none"></div>
+  <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#FFD700] rounded-full blur-[120px] mix-blend-screen animate-ambient opacity-10 pointer-events-none"></div>
+
+  <div class="max-w-xl w-full relative z-10 my-8">
+    
+    <div class="text-center mb-8">
+      <div class="inline-block px-4 py-1.5 rounded-full bg-[#102b21] border border-[#C4B5FD]/30 text-[#C4B5FD] text-[10px] font-bold tracking-widest uppercase mb-4 shadow-lg shadow-[#C4B5FD]/5">
+        Registration Closes Oct 10
+      </div>
+      <h1 class="text-4xl md:text-5xl font-black tracking-tighter text-white drop-shadow-lg">
+        QRYVON SYNC <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] to-[#ffeba8]">'26</span>
+      </h1>
+      <p class="text-[#C4B5FD] text-sm mt-3 font-medium tracking-wide">Enter the grid. Claim your digital pass.</p>
+    </div>
+
+    <!-- Registration Form -->
+    <div id="formCard" class="bg-[#0A1F18]/80 border border-[#C4B5FD]/20 p-6 md:p-8 rounded-3xl shadow-2xl backdrop-blur-xl relative overflow-hidden">
+      <!-- Decorative Top Gradient Line -->
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#0A1F18] via-[#C4B5FD] to-[#0A1F18]"></div>
+
+      <form id="regForm" class="space-y-5">
+        <!-- Personal Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Full Name *</label>
+            <input type="text" id="full_name" required placeholder="Alex Mercer" class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Date of Birth *</label>
+            <input type="date" id="dob" required class="w-full rounded-xl px-4 py-2.5 text-sm text-gray-300"/>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Phone *</label>
+            <input type="tel" id="phone" required placeholder="+91 9876543210" class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">School / College *</label>
+            <input type="text" id="institution" required placeholder="Institute Name" class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+          </div>
+        </div>
+
+        <!-- Links -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">GitHub Profile</label>
+            <input type="url" id="github_link" placeholder="https://github.com/..." class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Itch.io Profile</label>
+            <input type="url" id="itchio_link" placeholder="https://itch.io/..." class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+          </div>
+        </div>
+
+        <!-- Team Section -->
+        <div class="border-t border-[#C4B5FD]/10 pt-5 mt-2">
+          <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Participation Type *</label>
+          <select id="team_size" class="w-full rounded-xl px-4 py-2.5 text-sm appearance-none">
+            <option value="solo">Solo Hacker</option>
+            <option value="duo">Duo (2 Members)</option>
+            <option value="trio">Trio (3 Members)</option>
+          </select>
+        </div>
+
+        <div id="team_details" class="hidden space-y-5 bg-[#050e0a]/50 p-4 rounded-xl border border-[#C4B5FD]/10">
+          <div>
+            <label class="block text-[11px] font-bold text-[#FFD700] uppercase tracking-wider mb-1.5">Team Name *</label>
+            <input type="text" id="team_name" placeholder="ByteForce" class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div id="member2_div" class="hidden">
+              <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Member 2 Name *</label>
+              <input type="text" id="member2_name" placeholder="Name" class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+            </div>
+            <div id="member3_div" class="hidden">
+              <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Member 3 Name *</label>
+              <input type="text" id="member3_name" placeholder="Name" class="w-full rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email & OTP Section -->
+        <div class="border-t border-[#C4B5FD]/10 pt-5 mt-2">
+          <label class="block text-[11px] font-bold text-[#C4B5FD] uppercase tracking-wider mb-1.5">Email Verification *</label>
+          <div class="flex flex-col sm:flex-row gap-3 mb-3">
+            <input type="email" id="email" required placeholder="alex@example.com" class="flex-1 rounded-xl px-4 py-2.5 text-sm placeholder-gray-500"/>
+            <button type="button" id="sendOtpBtn" class="bg-[#102b21] hover:bg-[#1a4032] text-[#C4B5FD] border border-[#C4B5FD]/50 px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap shadow-md">
+              Send OTP
+            </button>
+          </div>
+          <input type="text" id="otp" required placeholder="Enter 6-digit OTP from email" disabled class="w-full rounded-xl px-4 py-3 text-sm text-center tracking-widest font-mono opacity-40"/>
+        </div>
+
+        <div id="errMsg" class="text-xs font-bold text-red-400 hidden text-center bg-red-950/50 p-2 rounded-lg"></div>
+        <div id="succMsg" class="text-xs font-bold text-emerald-400 hidden text-center bg-emerald-950/50 p-2 rounded-lg"></div>
+
+        <button type="submit" id="submitBtn" disabled class="w-full bg-gradient-to-r from-[#FFD700] to-[#e6c200] hover:from-[#e6c200] hover:to-[#cca300] text-[#0A1F18] font-black tracking-wide py-3.5 rounded-xl text-sm transition-all duration-200 opacity-50 cursor-not-allowed shadow-[0_0_15px_rgba(255,215,0,0.3)] mt-4">
+          VERIFY & GENERATE PASS
+        </button>
+      </form>
+    </div>
+
+    <!-- Pass Result Card -->
+    <div id="passCard" class="hidden space-y-5 transform transition-all duration-500">
+      <div id="passBadge" class="bg-gradient-to-br from-[#0A1F18] to-[#050e0a] border border-[#FFD700]/50 rounded-3xl p-8 text-center shadow-[0_0_30px_rgba(255,215,0,0.15)] relative overflow-hidden">
+        <!-- Badge Watermark -->
+        <div class="absolute -top-16 -right-16 text-[#FFD700] opacity-5 text-9xl font-black rotate-12 pointer-events-none">SYNC</div>
+        
+        <div class="inline-block px-3 py-1 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-400 tracking-widest mb-2">ACCESS GRANTED</div>
+        <h2 class="text-3xl font-black text-white">QRYVON SYNC <span class="text-[#FFD700]">'26</span></h2>
+        <p class="text-[#C4B5FD] text-xs mt-1">Official Event Pass</p>
+        
+        <div class="my-6 inline-block p-2.5 bg-white rounded-2xl shadow-xl">
+          <img id="passQr" src="" alt="QR Pass" class="w-56 h-56 object-contain" />
+        </div>
+
+        <div class="space-y-2 text-left bg-black/40 p-5 rounded-2xl border border-[#C4B5FD]/20 backdrop-blur-sm">
+          <div class="flex justify-between items-center border-b border-[#C4B5FD]/10 pb-2">
+            <span class="text-[#C4B5FD] text-xs font-medium uppercase tracking-wider">Participant</span>
+            <span id="badgeName" class="font-bold text-white text-sm"></span>
+          </div>
+          <div class="flex justify-between items-center border-b border-[#C4B5FD]/10 py-2">
+            <span class="text-[#C4B5FD] text-xs font-medium uppercase tracking-wider">Team</span>
+            <span id="badgeTeam" class="font-bold text-white text-sm"></span>
+          </div>
+          <div class="flex justify-between items-center pt-2">
+            <span class="text-[#C4B5FD] text-xs font-medium uppercase tracking-wider">Ticket ID</span>
+            <span id="badgeTicket" class="font-mono text-[#FFD700] font-black text-sm bg-[#FFD700]/10 px-2 py-0.5 rounded"></span>
+          </div>
+        </div>
+      </div>
+      <button id="downloadBtn" class="w-full bg-[#102b21] hover:bg-[#FFD700] border border-[#FFD700] text-[#FFD700] hover:text-[#0A1F18] font-black py-3.5 rounded-xl text-sm transition-all duration-300 shadow-lg">
+        ↓ DOWNLOAD PASS TO DEVICE
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Logic Remains Exactly the Same
+    const teamSelect = document.getElementById('team_size');
+    const teamDetails = document.getElementById('team_details');
+    const m2Div = document.getElementById('member2_div');
+    const m3Div = document.getElementById('member3_div');
+
+    teamSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val === 'solo') {
+        teamDetails.classList.add('hidden');
+        document.getElementById('team_name').required = false;
+        document.getElementById('member2_name').required = false;
+        document.getElementById('member3_name').required = false;
+      } else {
+        teamDetails.classList.remove('hidden');
+        document.getElementById('team_name').required = true;
+        
+        if (val === 'duo') {
+          m2Div.classList.remove('hidden'); m3Div.classList.add('hidden');
+          document.getElementById('member2_name').required = true;
+          document.getElementById('member3_name').required = false;
+        } else if (val === 'trio') {
+          m2Div.classList.remove('hidden'); m3Div.classList.remove('hidden');
+          document.getElementById('member2_name').required = true;
+          document.getElementById('member3_name').required = true;
+        }
+      }
+    });
+
+    const sendOtpBtn = document.getElementById('sendOtpBtn');
+    const otpInput = document.getElementById('otp');
+    const submitBtn = document.getElementById('submitBtn');
+    const errMsg = document.getElementById('errMsg');
+    const succMsg = document.getElementById('succMsg');
+
+    sendOtpBtn.addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+      if(!email) return alert('Enter email first');
+      
+      sendOtpBtn.disabled = true;
+      sendOtpBtn.textContent = 'Sending...';
+      
+      try {
+        const res = await fetch('/api/send-otp', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email}) });
+        const data = await res.json();
+        
+        if(!res.ok) throw new Error(data.error);
+        
+        succMsg.textContent = 'OTP Sent! Check your inbox.'; succMsg.classList.remove('hidden'); errMsg.classList.add('hidden');
+        otpInput.disabled = false; otpInput.classList.remove('opacity-40');
+        submitBtn.disabled = false; submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        sendOtpBtn.textContent = 'Sent ✓';
+      } catch (err) {
+        errMsg.textContent = err.message; errMsg.classList.remove('hidden'); succMsg.classList.add('hidden');
+        sendOtpBtn.disabled = false; sendOtpBtn.textContent = 'Send OTP';
+      }
+    });
+
+    document.getElementById('regForm').onsubmit = async (e) => {
+      e.preventDefault(); 
+      errMsg.classList.add('hidden'); succMsg.classList.add('hidden');
+      submitBtn.disabled = true; submitBtn.textContent = 'VERIFYING SECURELY...';
+
+      const payload = { 
+        full_name: document.getElementById('full_name').value, 
+        email: document.getElementById('email').value, 
+        phone: document.getElementById('phone').value, 
+        dob: document.getElementById('dob').value,
+        institution: document.getElementById('institution').value,
+        github_link: document.getElementById('github_link').value,
+        itchio_link: document.getElementById('itchio_link').value,
+        team_size: document.getElementById('team_size').value, 
+        team_name: document.getElementById('team_name').value,
+        member2_name: document.getElementById('member2_name').value,
+        member3_name: document.getElementById('member3_name').value,
+        otp: document.getElementById('otp').value 
+      };
+      
+      try {
+        const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+        document.getElementById('formCard').classList.add('hidden');
+        document.getElementById('badgeName').textContent = data.attendee.full_name;
+        document.getElementById('badgeTeam').textContent = data.attendee.team_name || 'Solo Hacker';
+        document.getElementById('badgeTicket').textContent = data.ticket_id;
+        document.getElementById('passQr').src = data.qrDataUrl;
+        document.getElementById('passCard').classList.remove('hidden');
+      } catch (err) { 
+        errMsg.textContent = err.message; errMsg.classList.remove('hidden'); 
+        submitBtn.disabled = false; submitBtn.textContent = 'VERIFY & GENERATE PASS';
+      }
+    };
+
+    document.getElementById('downloadBtn').onclick = () => {
+      html2canvas(document.getElementById('passBadge'), { scale: 3, backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a'); link.download = `Sync26-Pass-${document.getElementById('badgeTicket').textContent}.png`; link.href = canvas.toDataURL(); link.click();
+      });
+    };
+  </script>
+</body>
+</html>

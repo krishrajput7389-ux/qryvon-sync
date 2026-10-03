@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Qryvon Sync | Secure Gate Scanner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>.bg-qryvon-dark { background-color: #0A1F18; }</style>
+</head>
+<body class="bg-qryvon-dark text-slate-100 min-h-screen p-4 flex flex-col items-center">
+  <div class="max-w-md w-full space-y-4 mt-4">
+    <div class="flex justify-between items-end border-b border-[#C4B5FD]/30 pb-3">
+      <div>
+        <h1 class="text-2xl font-bold text-white">GATE SCANNER</h1>
+        <p class="text-xs text-[#FFD700]">Qryvon Sync '26</p>
+      </div>
+      <a href="/admin.html" class="text-xs text-[#C4B5FD] hover:text-white underline">Back to Dashboard</a>
+    </div>
+
+    <div class="rounded-2xl overflow-hidden border-2 border-[#C4B5FD]/30 bg-black shadow-2xl">
+      <div id="reader" class="w-full"></div>
+    </div>
+
+    <div id="statusBox" class="p-4 rounded-xl text-center hidden font-medium transition-all shadow-lg border">
+      <p id="statusHeading" class="text-xl font-black"></p>
+      <p id="statusSub" class="text-sm mt-1"></p>
+      <div id="statusDetails" class="mt-4 text-xs text-left bg-black/50 p-3 rounded-lg space-y-2 hidden">
+        <div class="flex justify-between border-b border-white/10 pb-1"><span class="text-white/60">Name:</span> <span id="detName" class="font-bold text-white"></span></div>
+        <div class="flex justify-between border-b border-white/10 pb-1"><span class="text-white/60">Team:</span> <span id="detTeam" class="font-bold text-white"></span></div>
+        <div class="flex justify-between border-b border-white/10 pb-1"><span class="text-white/60">Ticket:</span> <span id="detTicket" class="font-mono text-[#FFD700]"></span></div>
+        <div class="flex justify-between"><span class="text-white/60">Scanned:</span> <span id="detTime" class="text-white"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // SECURITY CHECK: Ensure user is logged in as an Admin
+    const token = localStorage.getItem('qryvon_admin_token');
+    if (!token) {
+      alert("UNAUTHORIZED: You must be logged into the Admin Portal to use the scanner.");
+      window.location.href = '/admin.html';
+    }
+
+    let isProcessing = false;
+    const statusBox = document.getElementById('statusBox');
+    const statusHeading = document.getElementById('statusHeading');
+    const statusSub = document.getElementById('statusSub');
+    const statusDetails = document.getElementById('statusDetails');
+
+    async function onScanSuccess(decodedText) {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      try {
+        const res = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ ticket_id: decodedText })
+        });
+        const data = await res.json();
+        
+        statusBox.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-500', 'bg-amber-950/80', 'border-amber-500', 'bg-red-950/80', 'border-red-500');
+
+        if (data.status === 'VALID') {
+          statusBox.classList.add('bg-emerald-950/80', 'border-emerald-500');
+          statusHeading.className = 'text-xl font-black text-emerald-400';
+          statusHeading.textContent = '✅ ACCESS GRANTED';
+          statusSub.textContent = 'Checked in successfully!';
+          showDetails(data.attendee, data.checked_in_at);
+        } else if (data.status === 'ALREADY_USED') {
+          statusBox.classList.add('bg-amber-950/80', 'border-amber-500');
+          statusHeading.className = 'text-xl font-black text-amber-400';
+          statusHeading.textContent = '⚠️ ALREADY CHECKED IN';
+          statusSub.textContent = `Scanned earlier at ${data.checked_in_at}`;
+          showDetails(data.attendee, data.checked_in_at);
+        } else {
+          statusBox.classList.add('bg-red-950/80', 'border-red-500');
+          statusHeading.className = 'text-xl font-black text-red-400';
+          statusHeading.textContent = '❌ INVALID TICKET';
+          statusSub.textContent = data.message || 'Ticket does not exist in database.';
+          statusDetails.classList.add('hidden');
+        }
+      } catch (err) {
+        alert('Network error. Ensure you are connected to the internet.');
+      }
+      setTimeout(() => { isProcessing = false; }, 3500); // Wait 3.5s before next scan
+    }
+
+    function showDetails(attendee, time) {
+      document.getElementById('detName').textContent = attendee.full_name;
+      document.getElementById('detTeam').textContent = attendee.team_name || 'Solo';
+      document.getElementById('detTicket').textContent = attendee.ticket_id;
+      document.getElementById('detTime').textContent = time;
+      statusDetails.classList.remove('hidden');
+    }
+
+    const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true });
+    scanner.render(onScanSuccess);
+  </script>
+</body>
+</html>
