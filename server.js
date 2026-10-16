@@ -76,6 +76,34 @@ app.get('/api/settings', async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// ADDED: The missing route to handle date changes from the admin panel
+app.post('/api/admin/settings', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  if (authHeader !== `Bearer ${ADMIN_TOKEN}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { reg_deadline, scan_date } = req.body;
+  if (!reg_deadline || !scan_date) {
+    return res.status(400).json({ error: 'Missing date values' });
+  }
+
+  try {
+    await pool.query(`
+      INSERT INTO settings (id, reg_deadline, scan_date)
+      VALUES (1, $1, $2)
+      ON CONFLICT (id) DO UPDATE 
+      SET reg_deadline = EXCLUDED.reg_deadline,
+          scan_date = EXCLUDED.scan_date;
+    `, [reg_deadline, scan_date]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Settings update error:', err);
+    res.status(500).json({ error: 'Database update failed' });
+  }
+});
+
 app.post('/api/send-otp', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
@@ -108,31 +136,20 @@ app.post('/api/send-otp', async (req, res) => {
 });
 
 app.get('/api/status', async (req, res) => {
-  const result = await pool.query('SELECT reg_deadline FROM settings WHERE id = 1');
-  const deadlineMs = new Date(result.rows[0].reg_deadline + ':00+05:30').getTime();
-  res.json({ isOpen: Date.now() <= deadlineMs });
-});
-
-app.post('/api/send-otp', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-  
-  const existing = await pool.query('SELECT id FROM attendees WHERE email = $1', [email.toLowerCase().trim()]);
-  if (existing.rowCount > 0) return res.status(400).json({ error: 'Email already registered.' });
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  otpStore.set(email.toLowerCase().trim(), { otp, expires: Date.now() + 10 * 60000 });
-
   try {
-    await transporter.sendMail({
-      from: '"Qryvon Sync" <contact.qryvon@gmail.com>',
-      to: email,
-      subject: 'Qryvon Sync Registration OTP',
-      text: `Your OTP is: ${otp}. It expires in 10 minutes.`,
-      html: `<h3>We see you. Your Qryvon Sync '26 registration is one step away from being locked in. Drop this into the portal before it expires in 10 minutes to secure your spot. See you at the hackathon!<strong>${otp}</strong></p>`
-    });
-    res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: 'Failed to send OTP.' }); }
+    const result = await pool.query('SELECT reg_deadline FROM settings WHERE id = 1');
+    if (result.rowCount === 0) return res.json({ isOpen: true });
+
+    let rawDeadline = result.rows[0].reg_deadline;
+    // Safely handles timezone appending so it doesn't crash the server
+    if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) {
+      rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
+    }
+    const deadlineMs = new Date(rawDeadline).getTime();
+    res.json({ isOpen: Date.now() <= deadlineMs });
+  } catch (err) {
+    res.status(500).json({ error: 'Status check failed' });
+  }
 });
 
 app.post('/api/register', async (req, res) => {
