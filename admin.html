@@ -36,7 +36,6 @@
       </div>
     </div>
 
-    <!-- Live Event Settings Panel -->
     <div class="bg-black/40 border border-[#FFD700]/40 p-4 rounded-xl shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
       <div>
         <h2 class="text-sm font-bold text-[#FFD700]">Live Event Settings</h2>
@@ -87,13 +86,13 @@
             <th class="p-4">Volunteer Name</th>
             <th class="p-4">Contact Info</th>
             <th class="p-4">Department</th>
+            <th class="p-4">Links</th>
             <th class="p-4">Registration Date</th>
           </tr>
         </thead>
         <tbody id="volunteerTableBody" class="divide-y divide-[#FFD700]/20"></tbody>
       </table>
     </div>
-
   </div>
 
   <script>
@@ -141,7 +140,6 @@
     }
 
     async function loadData() {
-      // Fetch Attendees
       const res = await fetch('/api/admin/data', { headers: { 'Authorization': `Bearer ${token()}` } });
       if (res.status === 401) return logout();
       const data = await res.json();
@@ -165,7 +163,6 @@
         `;
       }).join('');
 
-      // Fetch Volunteers
       const volRes = await fetch('/api/admin/volunteers', { headers: { 'Authorization': `Bearer ${token()}` } });
       const volData = await volRes.json();
       
@@ -174,11 +171,15 @@
       document.getElementById('volunteerTableBody').innerHTML = volData.volunteers.map(v => {
         const d = new Date(v.registered_at);
         const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const githubBadge = v.github_link ? `<a href="${v.github_link}" target="_blank" class="text-[10px] bg-slate-800 text-sky-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center mb-1">GitHub ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center mb-1">No GitHub</span>`;
+        const itchBadge = v.itchio_link ? `<a href="${v.itchio_link}" target="_blank" class="text-[10px] bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center">No Itch</span>`;
+
         return `
           <tr class="hover:bg-white/5 transition-colors">
             <td class="p-4 font-bold text-white">${v.full_name}</td>
-            <td class="p-4"><div class="text-[#C4B5FD]">${v.email}</div><div class="text-[#C4B5FD]/70 text-xs">${v.phone}</div></td>
+            <td class="p-4"><div class="text-[#C4B5FD]">${v.email}</div><div class="text-[#C4B5FD]/70 text-xs">${v.phone}</div><div class="text-[#C4B5FD]/50 text-[10px] mt-1 italic whitespace-normal max-w-xs">${v.address || 'No Address'}</div></td>
             <td class="p-4"><span class="bg-[#FFD700]/20 text-[#FFD700] px-2.5 py-1 rounded-full text-xs font-bold">${v.department}</span></td>
+            <td class="p-4">${githubBadge}${itchBadge}</td>
             <td class="p-4 text-[#C4B5FD]/50 text-xs">${dateStr}</td>
           </tr>
         `;
