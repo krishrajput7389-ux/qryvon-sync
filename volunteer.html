@@ -11,25 +11,43 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-  <div class="w-full max-w-md bg-black/40 border border-[#C4B5FD]/30 p-8 rounded-2xl shadow-2xl backdrop-blur-md">
+  <div class="w-full max-w-xl bg-black/40 border border-[#C4B5FD]/30 p-8 rounded-2xl shadow-2xl backdrop-blur-md">
     <div class="text-center mb-8">
       <h1 class="text-2xl font-bold text-white">JOIN THE <span class="text-[#FFD700]">CREW</span></h1>
       <p class="text-[#C4B5FD] text-xs mt-2">Qryvon Sync '26 Volunteer Portal</p>
     </div>
 
     <form id="volunteerForm" class="space-y-4">
-      <div>
-        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Full Name</label>
-        <input type="text" id="vName" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Full Name</label>
+          <input type="text" id="vName" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#C4B5FD] mb-1">WhatsApp Phone Number</label>
+          <input type="tel" id="vPhone" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+        </div>
       </div>
+      
       <div>
         <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Email Address</label>
-        <input type="email" id="vEmail" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+        <div class="flex gap-2">
+          <input type="email" id="vEmail" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+          <button type="button" id="btnSendOtp" class="bg-[#C4B5FD]/20 border border-[#C4B5FD]/50 hover:bg-[#C4B5FD]/40 text-[#C4B5FD] px-4 rounded-lg text-xs font-bold transition whitespace-nowrap">Send OTP</button>
+        </div>
+        <div id="otpMessage" class="text-[10px] mt-1 hidden"></div>
       </div>
+
+      <div id="otpSection" class="hidden transition-all">
+        <label class="block text-xs font-medium text-[#FFD700] mb-1">Enter OTP Code</label>
+        <input type="text" id="vOtp" placeholder="6-digit OTP" class="w-full bg-black/50 border border-[#FFD700]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700] tracking-widest"/>
+      </div>
+
       <div>
-        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">WhatsApp Phone Number</label>
-        <input type="tel" id="vPhone" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Residential Address</label>
+        <textarea id="vAddress" rows="2" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"></textarea>
       </div>
+
       <div>
         <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Preferred Department</label>
         <select id="vDept" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]">
@@ -42,26 +60,95 @@
         </select>
       </div>
 
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-[#C4B5FD] mb-1">GitHub Link (Optional)</label>
+          <input type="url" id="vGithub" class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]" placeholder="https://github.com/username"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Itch.io Link (Optional)</label>
+          <input type="url" id="vItch" class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]" placeholder="https://username.itch.io"/>
+        </div>
+      </div>
+
       <div id="vMessage" class="text-xs hidden text-center font-bold"></div>
 
-      <button type="submit" id="vSubmit" class="w-full bg-[#FFD700] text-[#0A1F18] font-bold py-3 rounded-lg text-sm mt-4 hover:bg-yellow-500 transition">Register as Volunteer</button>
+      <button type="submit" id="vSubmit" disabled class="w-full bg-slate-600 text-slate-300 font-bold py-3 rounded-lg text-sm mt-4 transition cursor-not-allowed">Verify OTP to Register</button>
     </form>
   </div>
 
   <script>
+    const btnSendOtp = document.getElementById('btnSendOtp');
+    const emailInput = document.getElementById('vEmail');
+    const otpSection = document.getElementById('otpSection');
+    const submitBtn = document.getElementById('vSubmit');
+    const otpMsg = document.getElementById('otpMessage');
+
+    btnSendOtp.onclick = async () => {
+      const email = emailInput.value.trim();
+      if (!email || !email.includes('@')) {
+        otpMsg.textContent = "Please enter a valid email first.";
+        otpMsg.className = "text-[10px] mt-1 text-red-400";
+        otpMsg.classList.remove('hidden');
+        return;
+      }
+
+      btnSendOtp.disabled = true;
+      btnSendOtp.textContent = "Sending...";
+      
+      try {
+        const res = await fetch('/api/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, role: 'volunteer' })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          otpMsg.textContent = "OTP Sent! Please check your inbox.";
+          otpMsg.className = "text-[10px] mt-1 text-emerald-400 font-bold";
+          otpMsg.classList.remove('hidden');
+          otpSection.classList.remove('hidden');
+          emailInput.readOnly = true;
+          document.getElementById('vOtp').required = true;
+          
+          submitBtn.disabled = false;
+          submitBtn.className = "w-full bg-[#FFD700] text-[#0A1F18] font-bold py-3 rounded-lg text-sm mt-4 hover:bg-yellow-500 transition";
+          submitBtn.textContent = "Register as Volunteer";
+          btnSendOtp.textContent = "Sent";
+        } else {
+          otpMsg.textContent = data.error || "Failed to send OTP.";
+          otpMsg.className = "text-[10px] mt-1 text-red-400";
+          otpMsg.classList.remove('hidden');
+          btnSendOtp.disabled = false;
+          btnSendOtp.textContent = "Send OTP";
+        }
+      } catch (err) {
+        otpMsg.textContent = "Network error.";
+        otpMsg.className = "text-[10px] mt-1 text-red-400";
+        otpMsg.classList.remove('hidden');
+        btnSendOtp.disabled = false;
+        btnSendOtp.textContent = "Send OTP";
+      }
+    };
+
     document.getElementById('volunteerForm').onsubmit = async (e) => {
       e.preventDefault();
       
-      const submitBtn = document.getElementById('vSubmit');
       const msgBox = document.getElementById('vMessage');
       submitBtn.disabled = true;
       submitBtn.textContent = 'Registering...';
 
       const payload = {
         full_name: document.getElementById('vName').value,
-        email: document.getElementById('vEmail').value,
+        email: emailInput.value,
         phone: document.getElementById('vPhone').value,
-        department: document.getElementById('vDept').value
+        department: document.getElementById('vDept').value,
+        address: document.getElementById('vAddress').value,
+        github_link: document.getElementById('vGithub').value,
+        itchio_link: document.getElementById('vItch').value,
+        otp: document.getElementById('vOtp').value
       };
 
       try {
@@ -77,6 +164,10 @@
           msgBox.className = "text-xs text-emerald-400 text-center font-bold mt-4";
           msgBox.textContent = "Registration successful! Welcome to the crew.";
           document.getElementById('volunteerForm').reset();
+          otpSection.classList.add('hidden');
+          emailInput.readOnly = false;
+          btnSendOtp.disabled = false;
+          btnSendOtp.textContent = "Send OTP";
         } else {
           msgBox.className = "text-xs text-red-400 text-center font-bold mt-4";
           msgBox.textContent = data.error || "Registration failed.";
