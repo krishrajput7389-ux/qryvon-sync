@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volunteer Registration | Qryvon Sync</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0A1F18; color: #E6E6FA; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md bg-black/40 border border-[#C4B5FD]/30 p-8 rounded-2xl shadow-2xl backdrop-blur-md">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-white">JOIN THE <span class="text-[#FFD700]">CREW</span></h1>
+      <p class="text-[#C4B5FD] text-xs mt-2">Qryvon Sync '26 Volunteer Portal</p>
+    </div>
+
+    <form id="volunteerForm" class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Full Name</label>
+        <input type="text" id="vName" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Email Address</label>
+        <input type="email" id="vEmail" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">WhatsApp Phone Number</label>
+        <input type="tel" id="vPhone" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]"/>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-[#C4B5FD] mb-1">Preferred Department</label>
+        <select id="vDept" required class="w-full bg-black/50 border border-[#C4B5FD]/50 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700]">
+          <option value="" disabled selected>Select a role...</option>
+          <option value="Tech Support">Tech Support</option>
+          <option value="Logistics">Logistics & Venue</option>
+          <option value="Media & Design">Media & Photography</option>
+          <option value="Hospitality">Hospitality</option>
+          <option value="Marketing">Marketing & PR</option>
+        </select>
+      </div>
+
+      <div id="vMessage" class="text-xs hidden text-center font-bold"></div>
+
+      <button type="submit" id="vSubmit" class="w-full bg-[#FFD700] text-[#0A1F18] font-bold py-3 rounded-lg text-sm mt-4 hover:bg-yellow-500 transition">Register as Volunteer</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('volunteerForm').onsubmit = async (e) => {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('vSubmit');
+      const msgBox = document.getElementById('vMessage');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Registering...';
+
+      const payload = {
+        full_name: document.getElementById('vName').value,
+        email: document.getElementById('vEmail').value,
+        phone: document.getElementById('vPhone').value,
+        department: document.getElementById('vDept').value
+      };
+
+      try {
+        const res = await fetch('/api/volunteer/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        msgBox.classList.remove('hidden');
+        if (data.success) {
+          msgBox.className = "text-xs text-emerald-400 text-center font-bold mt-4";
+          msgBox.textContent = "Registration successful! Welcome to the crew.";
+          document.getElementById('volunteerForm').reset();
+        } else {
+          msgBox.className = "text-xs text-red-400 text-center font-bold mt-4";
+          msgBox.textContent = data.error || "Registration failed.";
+        }
+      } catch (err) {
+        msgBox.classList.remove('hidden');
+        msgBox.className = "text-xs text-red-400 text-center font-bold mt-4";
+        msgBox.textContent = "Network error. Please try again.";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Register as Volunteer';
+      }
+    };
+  </script>
+</body>
+</html>
