@@ -17,6 +17,7 @@ app.use(express.json());
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanner.html')));
+app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html'))); // NEW VOLUNTEER ROUTE
 
 // Initialize PostgreSQL Tables
 async function initDB() {
@@ -41,6 +42,18 @@ async function initDB() {
     );
   `);
   
+  // NEW VOLUNTEERS TABLE
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS volunteers (
+      id SERIAL PRIMARY KEY,
+      full_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      phone TEXT NOT NULL,
+      department TEXT NOT NULL,
+      registered_at TEXT NOT NULL
+    );
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
       id INTEGER PRIMARY KEY,
@@ -76,7 +89,6 @@ app.get('/api/settings', async (req, res) => {
   res.json(result.rows[0]);
 });
 
-// ADDED: The missing route to handle date changes from the admin panel
 app.post('/api/admin/settings', async (req, res) => {
   const authHeader = req.headers['authorization'];
   if (authHeader !== `Bearer ${ADMIN_TOKEN}`) {
@@ -99,7 +111,6 @@ app.post('/api/admin/settings', async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Settings update error:', err);
     res.status(500).json({ error: 'Database update failed' });
   }
 });
@@ -141,7 +152,6 @@ app.get('/api/status', async (req, res) => {
     if (result.rowCount === 0) return res.json({ isOpen: true });
 
     let rawDeadline = result.rows[0].reg_deadline;
-    // Safely handles timezone appending so it doesn't crash the server
     if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) {
       rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
     }
@@ -176,6 +186,38 @@ app.post('/api/register', async (req, res) => {
     const qrDataUrl = await QRCode.toDataURL(ticket_id, { errorCorrectionLevel: 'H', margin: 2, width: 320, color: { dark: '#0A1F18', light: '#E6E6FA' } });
     res.json({ success: true, ticket_id, qrDataUrl, attendee: { full_name, team_name } });
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
+});
+
+// NEW: Volunteer Registration Route
+app.post('/api/volunteer/register', async (req, res) => {
+  const { full_name, email, phone, department } = req.body;
+  const safeEmail = email.trim().toLowerCase();
+
+  try {
+    const existing = await pool.query('SELECT id FROM volunteers WHERE email = $1', [safeEmail]);
+    if (existing.rowCount > 0) return res.status(400).json({ error: 'Email already registered as volunteer.' });
+
+    const registered_at = new Date().toISOString();
+    await pool.query(`
+      INSERT INTO volunteers (full_name, email, phone, department, registered_at)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [full_name.trim(), safeEmail, phone.trim(), department.trim(), registered_at]);
+    
+    res.json({ success: true });
+  } catch (err) { 
+    res.status(500).json({ error: 'Server error.' }); 
+  }
+});
+
+// NEW: Fetch Volunteers for Admin
+app.get('/api/admin/volunteers', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const result = await pool.query('SELECT * FROM volunteers ORDER BY id DESC');
+    res.json({ volunteers: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch volunteers' });
+  }
 });
 
 app.post('/api/admin/login', (req, res) => {
