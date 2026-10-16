@@ -17,7 +17,7 @@ app.use(express.json());
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanner.html')));
-app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html'))); // NEW VOLUNTEER ROUTE
+app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html')));
 
 // Initialize PostgreSQL Tables
 async function initDB() {
@@ -42,7 +42,7 @@ async function initDB() {
     );
   `);
   
-  // NEW VOLUNTEERS TABLE
+  // Create Volunteers table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS volunteers (
       id SERIAL PRIMARY KEY,
@@ -53,6 +53,11 @@ async function initDB() {
       registered_at TEXT NOT NULL
     );
   `);
+
+  // Safe migration: Add new columns if they don't exist yet
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN address TEXT'); } catch(e){}
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN github_link TEXT'); } catch(e){}
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN itchio_link TEXT'); } catch(e){}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -75,11 +80,6 @@ const ADMIN_USERS = [
   { email: 'aditya@qryvon.com', password: 'sync2026aditya' }
 ];
 const ADMIN_TOKEN = 'qryvon-secure-token-2026';
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: 'contact.qryvon@gmail.com', pass: process.env.EMAIL_PASS }
-});
 
 const otpStore = new Map();
 
@@ -115,15 +115,24 @@ app.post('/api/admin/settings', async (req, res) => {
   }
 });
 
+// UPDATED: Now checks either attendees or volunteers based on req.body.role
 app.post('/api/send-otp', async (req, res) => {
-  const { email } = req.body;
+  const { email, role } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   
-  const existing = await pool.query('SELECT id FROM attendees WHERE email = $1', [email.toLowerCase().trim()]);
+  const safeEmail = email.toLowerCase().trim();
+  let existing;
+
+  if (role === 'volunteer') {
+    existing = await pool.query('SELECT id FROM volunteers WHERE email = $1', [safeEmail]);
+  } else {
+    existing = await pool.query('SELECT id FROM attendees WHERE email = $1', [safeEmail]);
+  }
+
   if (existing.rowCount > 0) return res.status(400).json({ error: 'Email already registered.' });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  otpStore.set(email.toLowerCase().trim(), { otp, expires: Date.now() + 10 * 60000 });
+  otpStore.set(safeEmail, { otp, expires: Date.now() + 10 * 60000 });
 
   try {
     const response = await fetch(process.env.SCRIPT_URL, {
@@ -131,8 +140,8 @@ app.post('/api/send-otp', async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: email,
-        subject: 'Qryvon Sync Registration OTP',
-        html: `<h3>We see you. Your Qryvon Sync '26 registration is one step away from being locked in. Drop this into the portal before it expires in 10 minutes to secure your spot. See you at the hackathon!</h3><p>Your registration OTP is: <strong>${otp}</strong></p>`
+        subject: 'Qryvon Sync OTP',
+        html: `<h3>Welcome to Qryvon Sync '26!</h3><p>Your verification OTP is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`
       })
     });
     
@@ -188,10 +197,13 @@ app.post('/api/register', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
 
-// NEW: Volunteer Registration Route
+// UPDATED: Volunteer Registration Route (Now with OTP and new fields)
 app.post('/api/volunteer/register', async (req, res) => {
-  const { full_name, email, phone, department } = req.body;
+  const { full_name, email, phone, department, address, github_link, itchio_link, otp } = req.body;
   const safeEmail = email.trim().toLowerCase();
+
+  const record = otpStore.get(safeEmail);
+  if (!record || record.otp !== otp || Date.now() > record.expires) return res.status(400).json({ error: 'Invalid or expired OTP.' });
 
   try {
     const existing = await pool.query('SELECT id FROM volunteers WHERE email = $1', [safeEmail]);
@@ -199,17 +211,17 @@ app.post('/api/volunteer/register', async (req, res) => {
 
     const registered_at = new Date().toISOString();
     await pool.query(`
-      INSERT INTO volunteers (full_name, email, phone, department, registered_at)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [full_name.trim(), safeEmail, phone.trim(), department.trim(), registered_at]);
+      INSERT INTO volunteers (full_name, email, phone, department, address, github_link, itchio_link, registered_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [full_name.trim(), safeEmail, phone.trim(), department.trim(), (address || '').trim(), (github_link || '').trim(), (itchio_link || '').trim(), registered_at]);
     
+    otpStore.delete(safeEmail);
     res.json({ success: true });
   } catch (err) { 
     res.status(500).json({ error: 'Server error.' }); 
   }
 });
 
-// NEW: Fetch Volunteers for Admin
 app.get('/api/admin/volunteers', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   try {
