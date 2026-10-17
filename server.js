@@ -115,7 +115,7 @@ app.post('/api/admin/settings', async (req, res) => {
   }
 });
 
-// UPDATED: Now checks either attendees or volunteers based on req.body.role
+// UPDATED: Sending OTP via Brevo API to bypass Gmail Spam Filters
 app.post('/api/send-otp', async (req, res) => {
   const { email, role } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
@@ -135,26 +135,32 @@ app.post('/api/send-otp', async (req, res) => {
   otpStore.set(safeEmail, { otp, expires: Date.now() + 10 * 60000 });
 
   try {
-    const response = await fetch(process.env.SCRIPT_URL, {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json' 
+      },
       body: JSON.stringify({
-        to: email,
-        subject: 'Qryvon Sync OTP',
-        html: `<h3>Welcome to Qryvon Sync '26!</h3><p>Your verification OTP is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`
+        sender: { name: "Qryvon Sync", email: "contact.qryvon@gmail.com" },
+        to: [{ email: email }],
+        subject: "Qryvon Sync Registration OTP",
+        htmlContent: `<h3>Welcome to Qryvon Sync '26!</h3><p>Your verification OTP is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`
       })
     });
     
     if (response.ok) {
       res.json({ success: true });
     } else {
+      const errData = await response.json();
+      console.error('Brevo API Error:', errData);
       throw new Error('API Failed');
     }
   } catch (error) { 
     res.status(500).json({ error: 'Failed to send OTP.' }); 
   }
 });
-
 app.get('/api/status', async (req, res) => {
   try {
     const result = await pool.query('SELECT reg_deadline FROM settings WHERE id = 1');
