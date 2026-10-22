@@ -19,6 +19,7 @@ app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanne
 app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html')));
 app.get('/tracker.html', (req, res) => res.sendFile(path.join(__dirname, 'tracker.html')));
 app.get('/display.html', (req, res) => res.sendFile(path.join(__dirname, 'display.html')));
+app.get('/judging.html', (req, res) => res.sendFile(path.join(__dirname, 'judging.html'))); // NEW JUDGING ROUTE
 
 async function initDB() {
   await pool.query(`
@@ -71,6 +72,12 @@ async function initDB() {
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out_at TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checkout_remark TEXT'); } catch(e){}
+
+  // NEW: Judging Columns
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN score_tech INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN score_innovation INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN total_score INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN is_judged INTEGER DEFAULT 0'); } catch(e){}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -200,7 +207,6 @@ app.post('/api/admin/login', (req, res) => {
   else res.status(401).json({ error: 'Invalid credentials' });
 });
 
-// NEW: Broadcast Announcment Route
 app.post('/api/admin/broadcast', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { target, subject, message } = req.body;
@@ -215,7 +221,6 @@ app.post('/api/admin/broadcast', async (req, res) => {
       const vol = await pool.query("SELECT email FROM volunteers WHERE status != 'CANCELLED'");
       emails = emails.concat(vol.rows.map(r => ({ email: r.email })));
     }
-
     if (emails.length === 0) return res.status(400).json({ error: 'No active users found.' });
 
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -226,19 +231,12 @@ app.post('/api/admin/broadcast', async (req, res) => {
         to: [{ email: "contact.qryvon@gmail.com", name: "Qryvon Participants" }],
         bcc: emails,
         subject: subject,
-        htmlContent: `<div style="font-family:sans-serif; padding:20px; color:#333;">
-          <h2 style="color:#0A1F18;">Qryvon Sync '26 Update</h2>
-          <div style="font-size:16px; line-height:1.5;">${message.replace(/\n/g, '<br>')}</div>
-        </div>`
+        htmlContent: `<div style="font-family:sans-serif; padding:20px; color:#333;"><h2 style="color:#0A1F18;">Qryvon Sync '26 Update</h2><div style="font-size:16px; line-height:1.5;">${message.replace(/\n/g, '<br>')}</div></div>`
       })
     });
-
     if (response.ok) res.json({ success: true, count: emails.length });
     else throw new Error('Brevo API Failed');
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Broadcast dispatch failed' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Broadcast dispatch failed' }); }
 });
 
 app.post('/api/admin/manual-checkin', async (req, res) => {
@@ -317,6 +315,17 @@ app.post('/api/admin/timer', async (req, res) => {
     }
     res.json({ success: true });
   } catch(err) { res.status(500).json({ error: 'Timer error' }); }
+});
+
+// NEW: Judging Score Route
+app.post('/api/admin/score', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { ticket_id, tech, innovation } = req.body;
+  const total = parseInt(tech || 0) + parseInt(innovation || 0);
+  try {
+    await pool.query('UPDATE attendees SET score_tech = $1, score_innovation = $2, total_score = $3, is_judged = 1 WHERE ticket_id = $4', [tech, innovation, total, ticket_id.trim().toUpperCase()]);
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: 'Scoring failed' }); }
 });
 
 app.post('/api/verify', async (req, res) => {
