@@ -27,16 +27,27 @@
   </div>
 
   <div id="dashboardScreen" class="hidden p-6 max-w-[1400px] mx-auto space-y-6 pb-20">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-[#C4B5FD]/20 pb-4 gap-4">
-      <div><h1 class="text-3xl font-bold text-white">Qryvon Sync <span class="text-[#FFD700]">'26</span></h1><p class="text-sm text-[#C4B5FD]">Operations Dashboard</p></div>
-      <div class="flex flex-wrap gap-3">
-        <a href="/scanner.html" target="_blank" class="bg-[#FFD700]/10 border border-[#FFD700] text-[#FFD700] hover:bg-[#FFD700]/30 font-bold px-4 py-2 rounded-lg text-xs transition flex items-center">📷 Launch Scanner</a>
-        <a href="/tracker.html" target="_blank" class="bg-sky-500/10 border border-sky-500 text-sky-400 hover:bg-sky-500/30 font-bold px-4 py-2 rounded-lg text-xs transition flex items-center">⏱️ Time Tracker</a>
-        <button onclick="loadData()" class="bg-[#C4B5FD]/20 border border-[#C4B5FD] text-[#C4B5FD] hover:bg-[#C4B5FD]/40 font-bold px-4 py-2 rounded-lg text-xs transition">🔄 Refresh</button>
-        <button onclick="logout()" class="bg-red-950 border border-red-500 text-red-400 hover:bg-red-900 font-bold px-4 py-2 rounded-lg text-xs transition">Logout</button>
+    <!-- Header with Search & Controls -->
+    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-end border-b border-[#C4B5FD]/20 pb-4 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Qryvon Sync <span class="text-[#FFD700]">'26</span></h1>
+        <p class="text-sm text-[#C4B5FD]">Operations Dashboard</p>
+      </div>
+      
+      <div class="flex-1 w-full xl:w-auto max-w-md xl:mx-4">
+        <input type="text" id="searchBar" oninput="filterData()" placeholder="🔍 Search names, tickets, emails..." class="w-full bg-black/50 border border-[#C4B5FD]/30 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-[#FFD700] transition">
+      </div>
+
+      <div class="flex flex-wrap gap-2 w-full xl:w-auto">
+        <button onclick="exportCSV()" class="bg-emerald-500/10 border border-emerald-500 text-emerald-400 hover:bg-emerald-500/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">⬇️ Export CSV</button>
+        <a href="/scanner.html" target="_blank" class="bg-[#FFD700]/10 border border-[#FFD700] text-[#FFD700] hover:bg-[#FFD700]/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">📷 Scanner</a>
+        <a href="/tracker.html" target="_blank" class="bg-sky-500/10 border border-sky-500 text-sky-400 hover:bg-sky-500/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">⏱️ Timers</a>
+        <button onclick="loadData()" class="bg-[#C4B5FD]/20 border border-[#C4B5FD] text-[#C4B5FD] hover:bg-[#C4B5FD]/40 font-bold px-3 py-2 rounded-lg text-xs transition">🔄 Refresh</button>
+        <button onclick="logout()" class="bg-red-950 border border-red-500 text-red-400 hover:bg-red-900 font-bold px-3 py-2 rounded-lg text-xs transition">Logout</button>
       </div>
     </div>
 
+    <!-- Event Settings -->
     <div class="bg-black/40 border border-[#FFD700]/40 p-4 rounded-xl shadow-lg flex flex-col md:flex-row gap-4 items-center justify-between">
       <div>
         <h2 class="text-sm font-bold text-[#FFD700]">Live Event Settings</h2>
@@ -55,26 +66,20 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-black/30 p-5 rounded-xl border border-[#C4B5FD]/30 shadow-lg"><p class="text-xs font-semibold text-[#C4B5FD] uppercase">Active Registered</p><p id="totalStat" class="text-3xl font-black mt-2 text-white">0</p></div>
-      <div class="bg-black/30 p-5 rounded-xl border border-emerald-500/30 shadow-lg"><p class="text-xs font-semibold text-emerald-400 uppercase">Checked In</p><p id="checkedStat" class="text-3xl font-black mt-2 text-emerald-400">0</p></div>
-      <div class="bg-black/30 p-5 rounded-xl border border-amber-500/30 shadow-lg"><p class="text-xs font-semibold text-amber-400 uppercase">Pending</p><p id="pendingStat" class="text-3xl font-black mt-2 text-amber-400">0</p></div>
-      <div class="bg-[#FFD700]/10 p-5 rounded-xl border border-[#FFD700]/40 shadow-lg"><p class="text-xs font-semibold text-[#FFD700] uppercase">Active Volunteers</p><p id="volunteerStat" class="text-3xl font-black mt-2 text-[#FFD700]">0</p></div>
+    <!-- Statistics -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="bg-black/30 p-4 rounded-xl border border-[#C4B5FD]/30 shadow-lg"><p class="text-[10px] font-semibold text-[#C4B5FD] uppercase">Registered</p><p id="totalStat" class="text-2xl font-black mt-1 text-white">0</p></div>
+      <div class="bg-black/30 p-4 rounded-xl border border-emerald-500/30 shadow-lg"><p class="text-[10px] font-semibold text-emerald-400 uppercase">Checked In</p><p id="checkedStat" class="text-2xl font-black mt-1 text-emerald-400">0</p></div>
+      <div class="bg-black/30 p-4 rounded-xl border border-amber-500/30 shadow-lg"><p class="text-[10px] font-semibold text-amber-400 uppercase">Pending</p><p id="pendingStat" class="text-2xl font-black mt-1 text-amber-400">0</p></div>
+      <div class="bg-black/30 p-4 rounded-xl border border-slate-500/30 shadow-lg"><p class="text-[10px] font-semibold text-slate-400 uppercase">Checked Out</p><p id="outStat" class="text-2xl font-black mt-1 text-slate-400">0</p></div>
+      <div class="bg-[#FFD700]/10 p-4 rounded-xl border border-[#FFD700]/40 shadow-lg col-span-2 md:col-span-1"><p class="text-[10px] font-semibold text-[#FFD700] uppercase">Volunteers</p><p id="volunteerStat" class="text-2xl font-black mt-1 text-[#FFD700]">0</p></div>
     </div>
 
+    <!-- Data Tables -->
     <h2 class="text-xl font-bold text-white mt-8">Active Attendees</h2>
     <div class="bg-black/40 border border-[#C4B5FD]/30 rounded-xl overflow-x-auto shadow-2xl">
       <table class="w-full text-left text-xs whitespace-nowrap">
-        <thead class="bg-[#C4B5FD]/10 text-[#C4B5FD] uppercase">
-          <tr>
-            <th class="p-4">Ticket</th>
-            <th class="p-4">Participant</th>
-            <th class="p-4">Contact</th>
-            <th class="p-4">Team</th>
-            <th class="p-4">Links</th>
-            <th class="p-4">Actions</th>
-          </tr>
-        </thead>
+        <thead class="bg-[#C4B5FD]/10 text-[#C4B5FD] uppercase"><tr><th class="p-4">Ticket</th><th class="p-4">Participant</th><th class="p-4">Contact</th><th class="p-4">Team</th><th class="p-4">Links</th><th class="p-4">Actions</th></tr></thead>
         <tbody id="tableBody" class="divide-y divide-[#C4B5FD]/20"></tbody>
       </table>
     </div>
@@ -83,14 +88,7 @@
       <h2 class="text-xl font-bold text-red-400 mt-10">Cancelled Participants</h2>
       <div class="bg-black/40 border border-red-500/30 rounded-xl overflow-x-auto shadow-2xl">
         <table class="w-full text-left text-xs whitespace-nowrap">
-          <thead class="bg-red-500/10 text-red-400 uppercase">
-            <tr>
-              <th class="p-4">Ticket</th>
-              <th class="p-4">Participant</th>
-              <th class="p-4">Team</th>
-              <th class="p-4">Reason</th>
-            </tr>
-          </thead>
+          <thead class="bg-red-500/10 text-red-400 uppercase"><tr><th class="p-4">Ticket</th><th class="p-4">Participant</th><th class="p-4">Team</th><th class="p-4">Reason</th></tr></thead>
           <tbody id="cancelledTableBody" class="divide-y divide-red-500/20"></tbody>
         </table>
       </div>
@@ -99,15 +97,7 @@
     <h2 class="text-xl font-bold text-[#FFD700] mt-10">Active Volunteers</h2>
     <div class="bg-black/40 border border-[#FFD700]/30 rounded-xl overflow-x-auto shadow-2xl">
       <table class="w-full text-left text-xs whitespace-nowrap">
-        <thead class="bg-[#FFD700]/10 text-[#FFD700] uppercase">
-          <tr>
-            <th class="p-4">Volunteer Name</th>
-            <th class="p-4">Contact Info</th>
-            <th class="p-4">Department</th>
-            <th class="p-4">Links</th>
-            <th class="p-4">Actions</th>
-          </tr>
-        </thead>
+        <thead class="bg-[#FFD700]/10 text-[#FFD700] uppercase"><tr><th class="p-4">Volunteer Name</th><th class="p-4">Contact Info</th><th class="p-4">Department</th><th class="p-4">Links</th><th class="p-4">Actions</th></tr></thead>
         <tbody id="volunteerTableBody" class="divide-y divide-[#FFD700]/20"></tbody>
       </table>
     </div>
@@ -116,14 +106,7 @@
       <h2 class="text-xl font-bold text-red-400 mt-10">Cancelled Volunteers</h2>
       <div class="bg-black/40 border border-red-500/30 rounded-xl overflow-x-auto shadow-2xl">
         <table class="w-full text-left text-xs whitespace-nowrap">
-          <thead class="bg-red-500/10 text-red-400 uppercase">
-            <tr>
-              <th class="p-4">Volunteer Name</th>
-              <th class="p-4">Contact Info</th>
-              <th class="p-4">Department</th>
-              <th class="p-4">Reason</th>
-            </tr>
-          </thead>
+          <thead class="bg-red-500/10 text-red-400 uppercase"><tr><th class="p-4">Volunteer Name</th><th class="p-4">Contact Info</th><th class="p-4">Department</th><th class="p-4">Reason</th></tr></thead>
           <tbody id="cancelledVolunteerTableBody" class="divide-y divide-red-500/20"></tbody>
         </table>
       </div>
@@ -132,6 +115,7 @@
 
   <script>
     const token = () => localStorage.getItem('qryvon_admin_token');
+    let globalData = { attendees: [], volunteers: [] };
     
     function checkAuth() {
       if (token()) { document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('dashboardScreen').classList.remove('hidden'); loadData(); loadSettings(); } 
@@ -158,154 +142,102 @@
     async function saveSettings() {
       const reg_deadline = document.getElementById('setRegDeadline').value;
       const scan_date = document.getElementById('setScanDate').value;
-      
-      const res = await fetch('/api/admin/settings', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, 
-        body: JSON.stringify({ reg_deadline, scan_date }) 
-      });
-      
-      if (res.ok) { alert("Settings Updated! System is live with new dates."); loadSettings(); } 
-      else alert("Failed to update settings.");
+      const res = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ reg_deadline, scan_date }) });
+      if (res.ok) { alert("Settings Updated!"); loadSettings(); } else alert("Failed to update.");
     }
 
-    async function manualCheckIn(ticket_id) {
-      if (!confirm(`Manually check in ticket ${ticket_id}?`)) return;
-      const res = await fetch('/api/admin/manual-checkin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ ticket_id }) });
-      if (res.ok) loadData(); else alert('Check-in failed.');
-    }
-
-    async function cancelTicket(ticket_id) {
-      const reason = prompt(`Enter cancellation reason for ${ticket_id}:`);
-      if (!reason) return;
-      const res = await fetch('/api/admin/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ ticket_id, reason }) });
-      if (res.ok) loadData(); else alert('Cancellation failed.');
-    }
-
-    async function manualVolunteerCheckIn(email) {
-      if (!confirm(`Manually check in volunteer ${email}?`)) return;
-      const res = await fetch('/api/admin/volunteer-checkin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ email }) });
-      if (res.ok) loadData(); else alert('Check-in failed.');
-    }
-
-    async function cancelVolunteer(email) {
-      const reason = prompt(`Enter cancellation reason for volunteer ${email}:`);
-      if (!reason) return;
-      const res = await fetch('/api/admin/volunteer-cancel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ email, reason }) });
-      if (res.ok) loadData(); else alert('Cancellation failed.');
-    }
-
-    async function checkoutAttendee(ticket_id) {
-      const remark = prompt(`Enter checkout remarks (e.g. leaving with parent, hardware returned) for ticket ${ticket_id}:`);
-      if (remark === null) return;
-      const res = await fetch('/api/admin/attendee-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ ticket_id, remark }) });
-      if (res.ok) loadData(); else alert('Checkout failed.');
-    }
-
-    async function checkoutVolunteer(email) {
-      const remark = prompt(`Enter checkout remarks for volunteer ${email}:`);
-      if (remark === null) return;
-      const res = await fetch('/api/admin/volunteer-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ email, remark }) });
-      if (res.ok) loadData(); else alert('Checkout failed.');
+    async function manualAction(endpoint, payload) {
+      const res = await fetch(`/api/admin/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify(payload) });
+      if (res.ok) loadData(); else alert('Action failed.');
     }
 
     async function loadData() {
-      const res = await fetch('/api/admin/data', { headers: { 'Authorization': `Bearer ${token()}` } });
-      if (res.status === 401) return logout();
-      const data = await res.json();
-      
-      const activeAttendees = data.attendees.filter(a => (a.status || 'ACTIVE') !== 'CANCELLED');
-      const cancelledAttendees = data.attendees.filter(a => a.status === 'CANCELLED');
+      const aRes = await fetch('/api/admin/data', { headers: { 'Authorization': `Bearer ${token()}` } });
+      if (aRes.status === 401) return logout();
+      globalData.attendees = (await aRes.json()).attendees;
+
+      const vRes = await fetch('/api/admin/volunteers', { headers: { 'Authorization': `Bearer ${token()}` } });
+      globalData.volunteers = (await vRes.json()).volunteers;
+
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      const activeAttendees = globalData.attendees.filter(a => (a.status || 'ACTIVE') !== 'CANCELLED');
+      const cancelledAttendees = globalData.attendees.filter(a => a.status === 'CANCELLED');
+      const checkedOutAttendees = activeAttendees.filter(a => a.checked_out === 1);
 
       document.getElementById('totalStat').textContent = activeAttendees.length; 
-      document.getElementById('checkedStat').textContent = activeAttendees.filter(a => a.checked_in === 1).length; 
-      document.getElementById('pendingStat').textContent = activeAttendees.length - activeAttendees.filter(a => a.checked_in === 1).length;
-      
-      document.getElementById('tableBody').innerHTML = activeAttendees.map(a => {
-        const githubBadge = a.github_link ? `<a href="${a.github_link}" target="_blank" class="text-[10px] bg-slate-800 text-sky-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center mb-1">GitHub ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center mb-1">No GitHub</span>`;
-        const itchBadge = a.itchio_link ? `<a href="${a.itchio_link}" target="_blank" class="text-[10px] bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center">No Itch</span>`;
-        
-        let actionsHtml = '';
-        if (a.checked_out === 1) {
-          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/50 mb-1">🚪 CHECKED OUT</div><div class="text-[#C4B5FD]/50 text-[10px]">In: ${a.checked_in_at}</div><div class="text-slate-400/80 text-[10px]">Out: ${a.checked_out_at}</div><div class="text-sky-300/80 text-[10px] italic mt-0.5 max-w-[120px] whitespace-normal">Note: ${a.checkout_remark || 'N/A'}</div>`;
-        } else if (a.checked_in === 1) {
-          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mb-2">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mb-2">${a.checked_in_at}</div><button onclick="checkoutAttendee('${a.ticket_id}')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded text-xs transition border border-slate-500 w-full shadow-lg">Check Out</button>`;
-        } else {
-          actionsHtml = `<div class="flex gap-2"><button onclick="manualCheckIn('${a.ticket_id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button><button onclick="cancelTicket('${a.ticket_id}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button></div>`;
-        }
+      document.getElementById('checkedStat').textContent = activeAttendees.filter(a => a.checked_in === 1 && a.checked_out !== 1).length; 
+      document.getElementById('pendingStat').textContent = activeAttendees.filter(a => a.checked_in !== 1).length;
+      document.getElementById('outStat').textContent = checkedOutAttendees.length;
 
-        return `
-          <tr class="hover:bg-white/5 transition-colors">
-            <td class="p-4 font-mono font-bold text-[#FFD700]">${a.ticket_id}</td>
-            <td class="p-4"><div class="font-bold text-white text-sm">${a.full_name}</div><div class="text-[#C4B5FD]/70">DOB: ${a.dob}</div></td>
-            <td class="p-4"><div class="text-white">${a.email}</div><div class="text-[#C4B5FD]/70">${a.phone}</div><div class="text-[#C4B5FD]/70 text-[10px] uppercase mt-0.5">${a.institution}</div></td>
-            <td class="p-4"><div class="text-white font-semibold">${a.team_size === 'solo' ? 'Solo' : a.team_name} <span class="text-[#C4B5FD]/50 font-normal">(${a.team_size})</span></div>${a.member2_name ? `<div class="text-[#C4B5FD]/70 text-[10px]">2: ${a.member2_name}</div>` : ''}${a.member3_name ? `<div class="text-[#C4B5FD]/70 text-[10px]">3: ${a.member3_name}</div>` : ''}</td>
-            <td class="p-4">${githubBadge}${itchBadge}</td>
-            <td class="p-4 align-top">${actionsHtml}</td>
-          </tr>
-        `;
+      document.getElementById('tableBody').innerHTML = activeAttendees.map(a => {
+        const links = `${a.github_link ? `<a href="${a.github_link}" target="_blank" class="text-[10px] text-sky-400 hover:underline block mb-1">GitHub</a>` : ''}${a.itchio_link ? `<a href="${a.itchio_link}" target="_blank" class="text-[10px] text-red-400 hover:underline block">Itch.io</a>` : ''}`;
+        
+        let actions = '';
+        if (a.checked_out === 1) actions = `<div class="text-[10px] text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/50">🚪 Out: ${a.checked_out_at}<br><i class="text-sky-300">Note: ${a.checkout_remark}</i></div>`;
+        else if (a.checked_in === 1) actions = `<div class="text-[10px] text-emerald-400 mb-1">✅ In: ${a.checked_in_at}</div><button onclick="manualAction('attendee-checkout', {ticket_id: '${a.ticket_id}', remark: prompt('Checkout note:')})" class="bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded text-xs w-full">Check Out</button>`;
+        else actions = `<div class="flex gap-2"><button onclick="if(confirm('Check in?')) manualAction('manual-checkin', {ticket_id: '${a.ticket_id}'})" class="bg-emerald-600 px-3 py-1.5 rounded-lg text-white text-xs">Check In</button><button onclick="manualAction('cancel', {ticket_id: '${a.ticket_id}', reason: prompt('Reason:')})" class="bg-red-900/50 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg text-xs">Cancel</button></div>`;
+
+        return `<tr class="data-row hover:bg-white/5"><td class="p-4 font-mono text-[#FFD700]">${a.ticket_id}</td><td class="p-4 text-white">${a.full_name}<br><span class="text-[#C4B5FD]/70 text-xs">DOB: ${a.dob}</span></td><td class="p-4 text-white">${a.email}<br><span class="text-[#C4B5FD]/70 text-[10px]">${a.phone} | ${a.institution}</span></td><td class="p-4 text-white">${a.team_name || 'Solo'}</td><td class="p-4">${links || '-'}</td><td class="p-4">${actions}</td></tr>`;
       }).join('');
 
       if (cancelledAttendees.length > 0) {
         document.getElementById('cancelledSection').classList.remove('hidden');
-        document.getElementById('cancelledTableBody').innerHTML = cancelledAttendees.map(a => `
-          <tr class="hover:bg-red-500/5 transition-colors">
-            <td class="p-4 font-mono font-bold text-red-400">${a.ticket_id}</td>
-            <td class="p-4"><div class="font-bold text-white text-sm">${a.full_name}</div><div class="text-red-400/70 text-xs">${a.email}</div></td>
-            <td class="p-4 text-white font-semibold">${a.team_size === 'solo' ? 'Solo' : a.team_name}</td>
-            <td class="p-4 text-red-300 italic text-xs whitespace-normal max-w-sm">${a.cancel_reason || 'No reason provided'}</td>
-          </tr>
-        `).join('');
-      } else {
-        document.getElementById('cancelledSection').classList.add('hidden');
-      }
+        document.getElementById('cancelledTableBody').innerHTML = cancelledAttendees.map(a => `<tr class="data-row hover:bg-red-500/5"><td class="p-4 text-red-400">${a.ticket_id}</td><td class="p-4 text-white">${a.full_name}</td><td class="p-4 text-white">${a.team_name || 'Solo'}</td><td class="p-4 text-red-300 text-xs">${a.cancel_reason}</td></tr>`).join('');
+      } else document.getElementById('cancelledSection').classList.add('hidden');
 
-      const volRes = await fetch('/api/admin/volunteers', { headers: { 'Authorization': `Bearer ${token()}` } });
-      const volData = await volRes.json();
+      const activeVols = globalData.volunteers.filter(v => (v.status || 'ACTIVE') !== 'CANCELLED');
+      const cancelledVols = globalData.volunteers.filter(v => v.status === 'CANCELLED');
+      document.getElementById('volunteerStat').textContent = activeVols.length;
       
-      const activeVolunteers = volData.volunteers.filter(v => (v.status || 'ACTIVE') !== 'CANCELLED');
-      const cancelledVolunteers = volData.volunteers.filter(v => v.status === 'CANCELLED');
+      document.getElementById('volunteerTableBody').innerHTML = activeVols.map(v => {
+        const links = `${v.github_link ? `<a href="${v.github_link}" target="_blank" class="text-[10px] text-sky-400 hover:underline block mb-1">GitHub</a>` : ''}${v.itchio_link ? `<a href="${v.itchio_link}" target="_blank" class="text-[10px] text-red-400 hover:underline block">Itch.io</a>` : ''}`;
+        let actions = '';
+        if (v.checked_out === 1) actions = `<div class="text-[10px] text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/50">🚪 Out: ${v.checked_out_at}<br><i class="text-sky-300">Note: ${v.checkout_remark}</i></div>`;
+        else if (v.checked_in === 1) actions = `<div class="text-[10px] text-emerald-400 mb-1">✅ In: ${v.checked_in_at}</div><button onclick="manualAction('volunteer-checkout', {email: '${v.email}', remark: prompt('Checkout note:')})" class="bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded text-xs w-full">Check Out</button>`;
+        else actions = `<div class="flex gap-2"><button onclick="if(confirm('Check in?')) manualAction('volunteer-checkin', {email: '${v.email}'})" class="bg-emerald-600 px-3 py-1.5 rounded-lg text-white text-xs">Check In</button><button onclick="manualAction('volunteer-cancel', {email: '${v.email}', reason: prompt('Reason:')})" class="bg-red-900/50 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg text-xs">Cancel</button></div>`;
 
-      document.getElementById('volunteerStat').textContent = activeVolunteers.length;
-      
-      document.getElementById('volunteerTableBody').innerHTML = activeVolunteers.map(v => {
-        const githubBadge = v.github_link ? `<a href="${v.github_link}" target="_blank" class="text-[10px] bg-slate-800 text-sky-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center mb-1">GitHub ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center mb-1">No GitHub</span>`;
-        const itchBadge = v.itchio_link ? `<a href="${v.itchio_link}" target="_blank" class="text-[10px] bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center">No Itch</span>`;
-
-        let actionsHtml = '';
-        if (v.checked_out === 1) {
-          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/50 mb-1">🚪 CHECKED OUT</div><div class="text-[#C4B5FD]/50 text-[10px]">In: ${v.checked_in_at}</div><div class="text-slate-400/80 text-[10px]">Out: ${v.checked_out_at}</div><div class="text-sky-300/80 text-[10px] italic mt-0.5 max-w-[120px] whitespace-normal">Note: ${v.checkout_remark || 'N/A'}</div>`;
-        } else if (v.checked_in === 1) {
-          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mb-2">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mb-2">${v.checked_in_at}</div><button onclick="checkoutVolunteer('${v.email}')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded text-xs transition border border-slate-500 w-full shadow-lg">Check Out</button>`;
-        } else {
-          actionsHtml = `<div class="flex gap-2"><button onclick="manualVolunteerCheckIn('${v.email}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button><button onclick="cancelVolunteer('${v.email}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button></div>`;
-        }
-
-        return `
-          <tr class="hover:bg-white/5 transition-colors">
-            <td class="p-4 font-bold text-white">${v.full_name}</td>
-            <td class="p-4"><div class="text-[#C4B5FD]">${v.email}</div><div class="text-[#C4B5FD]/70 text-xs">${v.phone}</div><div class="text-[#C4B5FD]/50 text-[10px] mt-1 italic whitespace-normal max-w-xs">${v.address || 'No Address'}</div></td>
-            <td class="p-4"><span class="bg-[#FFD700]/20 text-[#FFD700] px-2.5 py-1 rounded-full text-xs font-bold">${v.department}</span></td>
-            <td class="p-4">${githubBadge}${itchBadge}</td>
-            <td class="p-4 align-top">${actionsHtml}</td>
-          </tr>
-        `;
+        return `<tr class="data-row hover:bg-white/5"><td class="p-4 text-white">${v.full_name}</td><td class="p-4 text-white">${v.email}<br><span class="text-[#C4B5FD]/70 text-xs">${v.phone}</span></td><td class="p-4 text-[#FFD700]">${v.department}</td><td class="p-4">${links || '-'}</td><td class="p-4">${actions}</td></tr>`;
       }).join('');
 
-      if (cancelledVolunteers.length > 0) {
+      if (cancelledVols.length > 0) {
         document.getElementById('cancelledVolunteersSection').classList.remove('hidden');
-        document.getElementById('cancelledVolunteerTableBody').innerHTML = cancelledVolunteers.map(v => `
-          <tr class="hover:bg-red-500/5 transition-colors">
-            <td class="p-4 font-bold text-white">${v.full_name}</td>
-            <td class="p-4"><div class="text-red-400/70 text-xs">${v.email}</div></td>
-            <td class="p-4"><span class="bg-[#FFD700]/20 text-[#FFD700] px-2.5 py-1 rounded-full text-xs font-bold">${v.department}</span></td>
-            <td class="p-4 text-red-300 italic text-xs whitespace-normal max-w-sm">${v.cancel_reason || 'No reason provided'}</td>
-          </tr>
-        `).join('');
-      } else {
-        document.getElementById('cancelledVolunteersSection').classList.add('hidden');
-      }
+        document.getElementById('cancelledVolunteerTableBody').innerHTML = cancelledVols.map(v => `<tr class="data-row hover:bg-red-500/5"><td class="p-4 text-white">${v.full_name}</td><td class="p-4 text-red-400">${v.email}</td><td class="p-4 text-[#FFD700]">${v.department}</td><td class="p-4 text-red-300 text-xs">${v.cancel_reason}</td></tr>`).join('');
+      } else document.getElementById('cancelledVolunteersSection').classList.add('hidden');
     }
+
+    function filterData() {
+      const q = document.getElementById('searchBar').value.toLowerCase();
+      document.querySelectorAll('.data-row').forEach(row => row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none');
+    }
+
+    function exportCSV() {
+      const escape = text => `"${String(text || '').replace(/"/g, '""')}"`;
+      
+      let csv = "Type,Ticket/Email,Name,Phone,Role/Dept,Status,In Time,Out Time,Remark\n";
+      
+      globalData.attendees.forEach(a => {
+        let status = a.status === 'CANCELLED' ? 'Cancelled' : (a.checked_out ? 'Checked Out' : (a.checked_in ? 'Checked In' : 'Pending'));
+        csv += `Attendee,${escape(a.ticket_id)},${escape(a.full_name)},${escape(a.phone)},${escape(a.team_name || 'Solo')},${status},${escape(a.checked_in_at)},${escape(a.checked_out_at)},${escape(a.checkout_remark || a.cancel_reason)}\n`;
+      });
+      
+      globalData.volunteers.forEach(v => {
+        let status = v.status === 'CANCELLED' ? 'Cancelled' : (v.checked_out ? 'Checked Out' : (v.checked_in ? 'Checked In' : 'Pending'));
+        csv += `Volunteer,${escape(v.email)},${escape(v.full_name)},${escape(v.phone)},${escape(v.department)},${status},${escape(v.checked_in_at)},${escape(v.checked_out_at)},${escape(v.checkout_remark || v.cancel_reason)}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `QryvonSync_Data_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
     checkAuth();
   </script>
 </body>
