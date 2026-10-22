@@ -56,7 +56,6 @@ async function initDB() {
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN github_link TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN itchio_link TEXT'); } catch(e){}
   
-  // Volunteer Tracking Columns
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_in INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_in_at TEXT'); } catch(e){}
   try { await pool.query("ALTER TABLE volunteers ADD COLUMN status TEXT DEFAULT 'ACTIVE'"); } catch(e){}
@@ -67,6 +66,15 @@ async function initDB() {
   try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_state TEXT DEFAULT 'STOPPED'"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN elapsed_time INTEGER DEFAULT 0"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_last_updated TEXT"); } catch(e){}
+
+  // NEW: Checkout Tracking Columns
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN checked_out INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN checked_out_at TEXT'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN checkout_remark TEXT'); } catch(e){}
+  
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out_at TEXT'); } catch(e){}
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN checkout_remark TEXT'); } catch(e){}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -210,6 +218,17 @@ app.post('/api/admin/manual-checkin', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Check-in failed' }); }
 });
 
+// NEW: Attendee Checkout Route
+app.post('/api/admin/attendee-checkout', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { ticket_id, remark } = req.body;
+  try {
+    const checkoutTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    await pool.query('UPDATE attendees SET checked_out = 1, checked_out_at = $1, checkout_remark = $2 WHERE ticket_id = $3', [checkoutTime, remark, ticket_id.trim().toUpperCase()]);
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: 'Checkout failed' }); }
+});
+
 app.post('/api/admin/cancel', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { ticket_id, reason } = req.body;
@@ -219,7 +238,6 @@ app.post('/api/admin/cancel', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Cancellation failed' }); }
 });
 
-// NEW: Volunteer Manual Check-in Route
 app.post('/api/admin/volunteer-checkin', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { email } = req.body;
@@ -230,7 +248,17 @@ app.post('/api/admin/volunteer-checkin', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Check-in failed' }); }
 });
 
-// NEW: Volunteer Cancellation Route
+// NEW: Volunteer Checkout Route
+app.post('/api/admin/volunteer-checkout', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { email, remark } = req.body;
+  try {
+    const checkoutTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    await pool.query('UPDATE volunteers SET checked_out = 1, checked_out_at = $1, checkout_remark = $2 WHERE email = $3', [checkoutTime, remark, email.trim().toLowerCase()]);
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: 'Checkout failed' }); }
+});
+
 app.post('/api/admin/volunteer-cancel', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { email, reason } = req.body;
@@ -272,6 +300,7 @@ app.post('/api/verify', async (req, res) => {
   if (attRes.rowCount === 0) return res.status(404).json({ status: 'INVALID', message: 'Ticket Not Found!' });
   const attendee = attRes.rows[0];
   if (attendee.status === 'CANCELLED') return res.status(403).json({ status: 'INVALID', message: 'This ticket has been cancelled.' });
+  if (attendee.checked_out === 1) return res.status(403).json({ status: 'INVALID', message: 'Pass already checked out.' });
   if (attendee.checked_in === 1) return res.json({ status: 'ALREADY_USED', message: 'Pass already redeemed!', checked_in_at: attendee.checked_in_at, attendee });
 
   const checkinTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
