@@ -171,48 +171,42 @@
 
     async function manualCheckIn(ticket_id) {
       if (!confirm(`Manually check in ticket ${ticket_id}?`)) return;
-      const res = await fetch('/api/admin/manual-checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ ticket_id })
-      });
-      if (res.ok) loadData();
-      else alert('Check-in failed.');
+      const res = await fetch('/api/admin/manual-checkin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ ticket_id }) });
+      if (res.ok) loadData(); else alert('Check-in failed.');
     }
 
     async function cancelTicket(ticket_id) {
       const reason = prompt(`Enter cancellation reason for ${ticket_id}:`);
       if (!reason) return;
-      const res = await fetch('/api/admin/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ ticket_id, reason })
-      });
-      if (res.ok) loadData();
-      else alert('Cancellation failed.');
+      const res = await fetch('/api/admin/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ ticket_id, reason }) });
+      if (res.ok) loadData(); else alert('Cancellation failed.');
     }
 
     async function manualVolunteerCheckIn(email) {
       if (!confirm(`Manually check in volunteer ${email}?`)) return;
-      const res = await fetch('/api/admin/volunteer-checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ email })
-      });
-      if (res.ok) loadData();
-      else alert('Check-in failed.');
+      const res = await fetch('/api/admin/volunteer-checkin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ email }) });
+      if (res.ok) loadData(); else alert('Check-in failed.');
     }
 
     async function cancelVolunteer(email) {
       const reason = prompt(`Enter cancellation reason for volunteer ${email}:`);
       if (!reason) return;
-      const res = await fetch('/api/admin/volunteer-cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ email, reason })
-      });
-      if (res.ok) loadData();
-      else alert('Cancellation failed.');
+      const res = await fetch('/api/admin/volunteer-cancel', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ email, reason }) });
+      if (res.ok) loadData(); else alert('Cancellation failed.');
+    }
+
+    async function checkoutAttendee(ticket_id) {
+      const remark = prompt(`Enter checkout remarks (e.g. leaving with parent, hardware returned) for ticket ${ticket_id}:`);
+      if (remark === null) return;
+      const res = await fetch('/api/admin/attendee-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ ticket_id, remark }) });
+      if (res.ok) loadData(); else alert('Checkout failed.');
+    }
+
+    async function checkoutVolunteer(email) {
+      const remark = prompt(`Enter checkout remarks for volunteer ${email}:`);
+      if (remark === null) return;
+      const res = await fetch('/api/admin/volunteer-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ email, remark }) });
+      if (res.ok) loadData(); else alert('Checkout failed.');
     }
 
     async function loadData() {
@@ -232,15 +226,12 @@
         const itchBadge = a.itchio_link ? `<a href="${a.itchio_link}" target="_blank" class="text-[10px] bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center">No Itch</span>`;
         
         let actionsHtml = '';
-        if (a.checked_in === 1) {
-          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mt-1">${a.checked_in_at}</div>`;
+        if (a.checked_out === 1) {
+          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/50 mb-1">🚪 CHECKED OUT</div><div class="text-[#C4B5FD]/50 text-[10px]">In: ${a.checked_in_at}</div><div class="text-slate-400/80 text-[10px]">Out: ${a.checked_out_at}</div><div class="text-sky-300/80 text-[10px] italic mt-0.5 max-w-[120px] whitespace-normal">Note: ${a.checkout_remark || 'N/A'}</div>`;
+        } else if (a.checked_in === 1) {
+          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mb-2">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mb-2">${a.checked_in_at}</div><button onclick="checkoutAttendee('${a.ticket_id}')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded text-xs transition border border-slate-500 w-full shadow-lg">Check Out</button>`;
         } else {
-          actionsHtml = `
-            <div class="flex gap-2">
-              <button onclick="manualCheckIn('${a.ticket_id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button>
-              <button onclick="cancelTicket('${a.ticket_id}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button>
-            </div>
-          `;
+          actionsHtml = `<div class="flex gap-2"><button onclick="manualCheckIn('${a.ticket_id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button><button onclick="cancelTicket('${a.ticket_id}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button></div>`;
         }
 
         return `
@@ -250,7 +241,7 @@
             <td class="p-4"><div class="text-white">${a.email}</div><div class="text-[#C4B5FD]/70">${a.phone}</div><div class="text-[#C4B5FD]/70 text-[10px] uppercase mt-0.5">${a.institution}</div></td>
             <td class="p-4"><div class="text-white font-semibold">${a.team_size === 'solo' ? 'Solo' : a.team_name} <span class="text-[#C4B5FD]/50 font-normal">(${a.team_size})</span></div>${a.member2_name ? `<div class="text-[#C4B5FD]/70 text-[10px]">2: ${a.member2_name}</div>` : ''}${a.member3_name ? `<div class="text-[#C4B5FD]/70 text-[10px]">3: ${a.member3_name}</div>` : ''}</td>
             <td class="p-4">${githubBadge}${itchBadge}</td>
-            <td class="p-4">${actionsHtml}</td>
+            <td class="p-4 align-top">${actionsHtml}</td>
           </tr>
         `;
       }).join('');
@@ -282,15 +273,12 @@
         const itchBadge = v.itchio_link ? `<a href="${v.itchio_link}" target="_blank" class="text-[10px] bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center">No Itch</span>`;
 
         let actionsHtml = '';
-        if (v.checked_in === 1) {
-          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mt-1">${v.checked_in_at}</div>`;
+        if (v.checked_out === 1) {
+          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/50 mb-1">🚪 CHECKED OUT</div><div class="text-[#C4B5FD]/50 text-[10px]">In: ${v.checked_in_at}</div><div class="text-slate-400/80 text-[10px]">Out: ${v.checked_out_at}</div><div class="text-sky-300/80 text-[10px] italic mt-0.5 max-w-[120px] whitespace-normal">Note: ${v.checkout_remark || 'N/A'}</div>`;
+        } else if (v.checked_in === 1) {
+          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 mb-2">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mb-2">${v.checked_in_at}</div><button onclick="checkoutVolunteer('${v.email}')" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded text-xs transition border border-slate-500 w-full shadow-lg">Check Out</button>`;
         } else {
-          actionsHtml = `
-            <div class="flex gap-2">
-              <button onclick="manualVolunteerCheckIn('${v.email}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button>
-              <button onclick="cancelVolunteer('${v.email}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button>
-            </div>
-          `;
+          actionsHtml = `<div class="flex gap-2"><button onclick="manualVolunteerCheckIn('${v.email}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button><button onclick="cancelVolunteer('${v.email}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button></div>`;
         }
 
         return `
@@ -299,7 +287,7 @@
             <td class="p-4"><div class="text-[#C4B5FD]">${v.email}</div><div class="text-[#C4B5FD]/70 text-xs">${v.phone}</div><div class="text-[#C4B5FD]/50 text-[10px] mt-1 italic whitespace-normal max-w-xs">${v.address || 'No Address'}</div></td>
             <td class="p-4"><span class="bg-[#FFD700]/20 text-[#FFD700] px-2.5 py-1 rounded-full text-xs font-bold">${v.department}</span></td>
             <td class="p-4">${githubBadge}${itchBadge}</td>
-            <td class="p-4">${actionsHtml}</td>
+            <td class="p-4 align-top">${actionsHtml}</td>
           </tr>
         `;
       }).join('');
