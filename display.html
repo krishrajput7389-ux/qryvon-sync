@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qryvon Sync | Live Display</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0A1F18; overflow: hidden; }
+    
+    .marquee-container { overflow: hidden; white-space: nowrap; width: 100%; position: relative; }
+    .marquee-content {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+    }
+    
+    @keyframes marquee {
+      0% { transform: translateX(100vw); }
+      100% { transform: translateX(-100%); }
+    }
+
+    .glow-text {
+      text-shadow: 0 0 20px rgba(196, 181, 253, 0.4);
+    }
+    .gold-glow {
+      text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+    }
+  </style>
+</head>
+<body class="text-slate-100 h-screen flex flex-col font-sans bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
+
+  <!-- Main Content Area -->
+  <div class="flex-1 flex flex-col items-center justify-center p-8 text-center relative z-10">
+    
+    <!-- Branding -->
+    <div class="mb-12">
+      <h1 class="text-6xl md:text-8xl font-black text-white tracking-widest glow-text">
+        QRYVON SYNC <span class="text-[#FFD700] gold-glow">'26</span>
+      </h1>
+      <p class="text-2xl text-[#C4B5FD] font-mono mt-4 uppercase tracking-[0.3em]">Haven Muzaffarpur</p>
+    </div>
+
+    <!-- Active Hackers Stat -->
+    <div class="bg-black/40 border border-[#C4B5FD]/30 p-8 rounded-3xl shadow-2xl backdrop-blur-md mb-12">
+      <p class="text-xl text-[#C4B5FD] font-bold uppercase tracking-widest mb-2">Hackers in Venue</p>
+      <div id="activeCount" class="text-7xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]">--</div>
+    </div>
+
+    <!-- Hacking Deadline Countdown -->
+    <div class="w-full max-w-4xl bg-black/60 border border-[#FFD700]/30 rounded-3xl p-10 shadow-[0_0_50px_rgba(255,215,0,0.1)]">
+      <p class="text-lg text-[#FFD700] font-bold uppercase tracking-widest mb-6">Time Remaining</p>
+      <div class="grid grid-cols-4 gap-4 md:gap-8 text-center">
+        <div class="flex flex-col"><span id="days" class="text-5xl md:text-7xl font-black text-white">00</span><span class="text-sm text-slate-400 mt-2 uppercase tracking-widest">Days</span></div>
+        <div class="flex flex-col"><span id="hours" class="text-5xl md:text-7xl font-black text-white">00</span><span class="text-sm text-slate-400 mt-2 uppercase tracking-widest">Hours</span></div>
+        <div class="flex flex-col"><span id="mins" class="text-5xl md:text-7xl font-black text-white">00</span><span class="text-sm text-slate-400 mt-2 uppercase tracking-widest">Mins</span></div>
+        <div class="flex flex-col"><span id="secs" class="text-5xl md:text-7xl font-black text-[#FFD700]">00</span><span class="text-sm text-[#FFD700]/60 mt-2 uppercase tracking-widest">Secs</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scrolling Marquee of Checked-In Teams -->
+  <div class="w-full bg-black/80 border-t border-[#C4B5FD]/20 py-4 absolute bottom-0">
+    <div class="flex items-center">
+      <div class="bg-emerald-500/20 text-emerald-400 px-6 py-2 border-r border-[#C4B5FD]/20 font-bold uppercase tracking-widest text-sm z-20 shadow-[10px_0_20px_rgba(0,0,0,0.8)] shrink-0">
+        🟢 LIVE CHECK-INS
+      </div>
+      <div class="marquee-container flex-1">
+        <div id="teamMarquee" class="marquee-content text-xl font-bold text-white tracking-wider flex gap-12">
+          <!-- Populated by JS -->
+          Waiting for hackers to arrive...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let deadlineTime = 0;
+
+    async function fetchDisplayData() {
+      try {
+        const res = await fetch('/api/public/display');
+        const data = await res.json();
+        
+        document.getElementById('activeCount').textContent = data.totalActive;
+        deadlineTime = new Date(data.deadline).getTime();
+
+        const marquee = document.getElementById('teamMarquee');
+        if (data.teams && data.teams.length > 0) {
+          marquee.innerHTML = data.teams.map(t => `<span class="text-[#FFD700]">★</span> ${t}`).join(' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ');
+        } else {
+          marquee.innerHTML = "Awaiting first check-ins...";
+        }
+      } catch (err) {
+        console.error("Display refresh failed");
+      }
+    }
+
+    function updateCountdown() {
+      if (!deadlineTime) return;
+      
+      const now = new Date().getTime();
+      const distance = deadlineTime - now;
+
+      if (distance < 0) {
+        document.getElementById('days').textContent = "00";
+        document.getElementById('hours').textContent = "00";
+        document.getElementById('mins').textContent = "00";
+        document.getElementById('secs').textContent = "00";
+        return;
+      }
+
+      document.getElementById('days').textContent = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+      document.getElementById('hours').textContent = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+      document.getElementById('mins').textContent = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+      document.getElementById('secs').textContent = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
+    }
+
+    // Initialize and run loops
+    fetchDisplayData();
+    setInterval(fetchDisplayData, 10000); // Pull new check-ins every 10 seconds
+    setInterval(updateCountdown, 1000);   // Update clock every second
+  </script>
+</body>
+</html>
