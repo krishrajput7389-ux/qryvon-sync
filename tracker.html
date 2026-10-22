@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Qryvon Sync | Live Time Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .bg-qryvon-dark { background-color: #0A1F18; }
+  </style>
+</head>
+<body class="bg-qryvon-dark text-slate-100 min-h-screen font-sans">
+
+  <div id="loginScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-qryvon-dark px-4 hidden">
+    <div class="text-center">
+      <h2 class="text-xl font-bold text-white mb-4">Admin Access Required</h2>
+      <a href="/admin.html" class="bg-[#FFD700] text-[#0A1F18] font-bold py-2 px-6 rounded-lg text-sm hover:bg-yellow-500 transition">Go to Login</a>
+    </div>
+  </div>
+
+  <div id="trackerScreen" class="p-6 max-w-[1000px] mx-auto space-y-6 pb-20">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-[#C4B5FD]/20 pb-4 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Live <span class="text-sky-400">Time Tracker</span></h1>
+        <p class="text-sm text-[#C4B5FD]">Manage hacking hours for checked-in participants</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/admin.html" class="bg-[#C4B5FD]/20 border border-[#C4B5FD] text-[#C4B5FD] hover:bg-[#C4B5FD]/40 font-bold px-4 py-2 rounded-lg text-xs transition">Dashboard</a>
+      </div>
+    </div>
+
+    <div id="trackersContainer" class="space-y-4">
+      <!-- Timers injected here -->
+    </div>
+  </div>
+
+  <script>
+    const token = () => localStorage.getItem('qryvon_admin_token');
+    let attendeesData = [];
+
+    function checkAuth() {
+      if (!token()) {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('trackerScreen').classList.add('hidden');
+      } else {
+        loadData();
+      }
+    }
+
+    async function loadData() {
+      const res = await fetch('/api/admin/data', { headers: { 'Authorization': `Bearer ${token()}` } });
+      if (res.status === 401) {
+        localStorage.removeItem('qryvon_admin_token');
+        return checkAuth();
+      }
+      const data = await res.json();
+      
+      attendeesData = data.attendees.filter(a => a.checked_in === 1 && a.status !== 'CANCELLED');
+      renderTrackers();
+    }
+
+    async function controlTimer(ticket_id, action) {
+      const res = await fetch('/api/admin/timer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
+        body: JSON.stringify({ ticket_id, action })
+      });
+      if (res.ok) loadData();
+      else alert('Failed to update timer.');
+    }
+
+    function formatTime(seconds) {
+      const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+      const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    function renderTrackers() {
+      const container = document.getElementById('trackersContainer');
+      
+      if (attendeesData.length === 0) {
+        container.innerHTML = `<div class="text-center p-10 text-[#C4B5FD]/50">No participants are currently checked in.</div>`;
+        return;
+      }
+
+      container.innerHTML = attendeesData.map(a => {
+        let stateColor = 'text-white';
+        if (a.timer_state === 'RUNNING') stateColor = 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]';
+        if (a.timer_state === 'PAUSED') stateColor = 'text-amber-400';
+        if (a.timer_state === 'STOPPED' && a.elapsed_time > 0) stateColor = 'text-slate-500';
+
+        let currentElapsed = a.elapsed_time || 0;
+        if (a.timer_state === 'RUNNING' && a.timer_last_updated) {
+          currentElapsed += Math.floor((Date.now() - parseInt(a.timer_last_updated)) / 1000);
+        }
+
+        let buttons = '';
+        const state = a.timer_state || 'STOPPED';
+        if (state === 'STOPPED' && (!a.elapsed_time || a.elapsed_time === 0)) {
+          buttons = `<button onclick="controlTimer('${a.ticket_id}', 'start')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition w-full md:w-auto">Start Hacking</button>`;
+        } else if (state === 'RUNNING') {
+          buttons = `
+            <button onclick="controlTimer('${a.ticket_id}', 'pause')" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition">Pause</button>
+            <button onclick="controlTimer('${a.ticket_id}', 'stop')" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition">End Session</button>
+          `;
+        } else if (state === 'PAUSED') {
+          buttons = `
+            <button onclick="controlTimer('${a.ticket_id}', 'resume')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition">Resume</button>
+            <button onclick="controlTimer('${a.ticket_id}', 'stop')" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg text-sm transition">End Session</button>
+          `;
+        } else if (state === 'STOPPED' && a.elapsed_time > 0) {
+          buttons = `<span class="bg-slate-800 text-slate-400 font-bold py-2 px-6 rounded-lg text-sm border border-slate-700">Finished</span>`;
+        }
+
+        return `
+          <div class="bg-black/40 border border-[#C4B5FD]/30 p-5 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-center md:text-left">
+              <h3 class="text-xl font-bold text-white">${a.team_size === 'solo' ? a.full_name : a.team_name}</h3>
+              <p class="text-xs text-[#C4B5FD] font-mono mt-1">${a.ticket_id} | ${a.team_size === 'solo' ? 'Solo' : 'Team'}</p>
+            </div>
+            
+            <div class="text-4xl md:text-5xl font-mono font-black tracking-wider ${stateColor} timer-display" 
+                 data-state="${state}" 
+                 data-elapsed="${a.elapsed_time || 0}" 
+                 data-last-updated="${a.timer_last_updated || 0}">
+              ${formatTime(currentElapsed)}
+            </div>
+            
+            <div class="flex gap-2 w-full md:w-auto justify-center">
+              ${buttons}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    setInterval(() => {
+      document.querySelectorAll('.timer-display').forEach(el => {
+        if (el.dataset.state === 'RUNNING') {
+          const elapsed = parseInt(el.dataset.elapsed) || 0;
+          const lastUpdated = parseInt(el.dataset.lastUpdated) || Date.now();
+          const current = elapsed + Math.floor((Date.now() - lastUpdated) / 1000);
+          el.textContent = formatTime(current);
+        }
+      });
+    }, 1000);
+
+    checkAuth();
+  </script>
+</body>
+</html>
