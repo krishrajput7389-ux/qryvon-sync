@@ -17,7 +17,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanner.html')));
 app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html')));
-app.get('/tracker.html', (req, res) => res.sendFile(path.join(__dirname, 'tracker.html'))); // NEW TRACKER ROUTE
+app.get('/tracker.html', (req, res) => res.sendFile(path.join(__dirname, 'tracker.html')));
 
 async function initDB() {
   await pool.query(`
@@ -56,7 +56,12 @@ async function initDB() {
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN github_link TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN itchio_link TEXT'); } catch(e){}
   
-  // NEW: Safe migrations for cancellations and time tracking
+  // Volunteer Tracking Columns
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_in INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_in_at TEXT'); } catch(e){}
+  try { await pool.query("ALTER TABLE volunteers ADD COLUMN status TEXT DEFAULT 'ACTIVE'"); } catch(e){}
+  try { await pool.query("ALTER TABLE volunteers ADD COLUMN cancel_reason TEXT"); } catch(e){}
+  
   try { await pool.query("ALTER TABLE attendees ADD COLUMN status TEXT DEFAULT 'ACTIVE'"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN cancel_reason TEXT"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_state TEXT DEFAULT 'STOPPED'"); } catch(e){}
@@ -195,7 +200,6 @@ app.post('/api/admin/login', (req, res) => {
   else res.status(401).json({ error: 'Invalid credentials' });
 });
 
-// NEW: Manual Check-in Route
 app.post('/api/admin/manual-checkin', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { ticket_id } = req.body;
@@ -206,7 +210,6 @@ app.post('/api/admin/manual-checkin', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Check-in failed' }); }
 });
 
-// NEW: Cancel Participant Route
 app.post('/api/admin/cancel', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { ticket_id, reason } = req.body;
@@ -216,7 +219,27 @@ app.post('/api/admin/cancel', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Cancellation failed' }); }
 });
 
-// NEW: Time Tracking Route
+// NEW: Volunteer Manual Check-in Route
+app.post('/api/admin/volunteer-checkin', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { email } = req.body;
+  try {
+    const checkinTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    await pool.query('UPDATE volunteers SET checked_in = 1, checked_in_at = $1 WHERE email = $2', [checkinTime, email.trim().toLowerCase()]);
+    res.json({ success: true, checked_in_at: checkinTime });
+  } catch(err) { res.status(500).json({ error: 'Check-in failed' }); }
+});
+
+// NEW: Volunteer Cancellation Route
+app.post('/api/admin/volunteer-cancel', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { email, reason } = req.body;
+  try {
+    await pool.query("UPDATE volunteers SET status = 'CANCELLED', cancel_reason = $1 WHERE email = $2", [reason, email.trim().toLowerCase()]);
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: 'Cancellation failed' }); }
+});
+
 app.post('/api/admin/timer', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { ticket_id, action } = req.body; 
