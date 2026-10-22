@@ -18,7 +18,7 @@ app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.ht
 app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanner.html')));
 app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html')));
 app.get('/tracker.html', (req, res) => res.sendFile(path.join(__dirname, 'tracker.html')));
-app.get('/display.html', (req, res) => res.sendFile(path.join(__dirname, 'display.html'))); // NEW DISPLAY ROUTE
+app.get('/display.html', (req, res) => res.sendFile(path.join(__dirname, 'display.html')));
 
 async function initDB() {
   await pool.query(`
@@ -56,22 +56,18 @@ async function initDB() {
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN address TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN github_link TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN itchio_link TEXT'); } catch(e){}
-  
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_in INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_in_at TEXT'); } catch(e){}
   try { await pool.query("ALTER TABLE volunteers ADD COLUMN status TEXT DEFAULT 'ACTIVE'"); } catch(e){}
   try { await pool.query("ALTER TABLE volunteers ADD COLUMN cancel_reason TEXT"); } catch(e){}
-  
   try { await pool.query("ALTER TABLE attendees ADD COLUMN status TEXT DEFAULT 'ACTIVE'"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN cancel_reason TEXT"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_state TEXT DEFAULT 'STOPPED'"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN elapsed_time INTEGER DEFAULT 0"); } catch(e){}
   try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_last_updated TEXT"); } catch(e){}
-
   try { await pool.query('ALTER TABLE attendees ADD COLUMN checked_out INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN checked_out_at TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN checkout_remark TEXT'); } catch(e){}
-  
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out_at TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checkout_remark TEXT'); } catch(e){}
@@ -99,21 +95,15 @@ const ADMIN_USERS = [
 const ADMIN_TOKEN = 'qryvon-secure-token-2026';
 const otpStore = new Map();
 
-// NEW: Public Display Route
 app.get('/api/public/display', async (req, res) => {
   try {
     const attRes = await pool.query("SELECT team_name, full_name, team_size FROM attendees WHERE checked_in = 1 AND checked_out = 0 AND status != 'CANCELLED' ORDER BY id DESC");
     const volRes = await pool.query("SELECT COUNT(*) FROM volunteers WHERE checked_in = 1 AND checked_out = 0 AND status != 'CANCELLED'");
     const setRes = await pool.query('SELECT reg_deadline FROM settings WHERE id = 1');
-
     let rawDeadline = setRes.rows[0].reg_deadline;
-    if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) {
-      rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
-    }
-
+    if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
     const teams = attRes.rows.map(a => a.team_size === 'solo' ? a.full_name : a.team_name);
     const totalActive = attRes.rowCount + parseInt(volRes.rows[0].count);
-
     res.json({ teams, totalActive, deadline: rawDeadline });
   } catch(err) { res.status(500).json({ error: 'Display data fetch failed' }); }
 });
@@ -208,6 +198,47 @@ app.post('/api/admin/login', (req, res) => {
   const user = ADMIN_USERS.find(u => u.email === req.body.email && u.password === req.body.password);
   if (user) res.json({ success: true, token: ADMIN_TOKEN });
   else res.status(401).json({ error: 'Invalid credentials' });
+});
+
+// NEW: Broadcast Announcment Route
+app.post('/api/admin/broadcast', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { target, subject, message } = req.body;
+
+  try {
+    let emails = [];
+    if (target === 'all' || target === 'attendees') {
+      const att = await pool.query("SELECT email FROM attendees WHERE status != 'CANCELLED'");
+      emails = emails.concat(att.rows.map(r => ({ email: r.email })));
+    }
+    if (target === 'all' || target === 'volunteers') {
+      const vol = await pool.query("SELECT email FROM volunteers WHERE status != 'CANCELLED'");
+      emails = emails.concat(vol.rows.map(r => ({ email: r.email })));
+    }
+
+    if (emails.length === 0) return res.status(400).json({ error: 'No active users found.' });
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'accept': 'application/json', 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sender: { name: "Qryvon Sync Team", email: "contact.qryvon@gmail.com" },
+        to: [{ email: "contact.qryvon@gmail.com", name: "Qryvon Participants" }],
+        bcc: emails,
+        subject: subject,
+        htmlContent: `<div style="font-family:sans-serif; padding:20px; color:#333;">
+          <h2 style="color:#0A1F18;">Qryvon Sync '26 Update</h2>
+          <div style="font-size:16px; line-height:1.5;">${message.replace(/\n/g, '<br>')}</div>
+        </div>`
+      })
+    });
+
+    if (response.ok) res.json({ success: true, count: emails.length });
+    else throw new Error('Brevo API Failed');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Broadcast dispatch failed' });
+  }
 });
 
 app.post('/api/admin/manual-checkin', async (req, res) => {
