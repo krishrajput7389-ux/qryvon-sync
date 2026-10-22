@@ -7,7 +7,6 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 
-// PostgreSQL Connection (Secure for Render)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false } 
@@ -18,8 +17,8 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/scanner.html', (req, res) => res.sendFile(path.join(__dirname, 'scanner.html')));
 app.get('/volunteer.html', (req, res) => res.sendFile(path.join(__dirname, 'volunteer.html')));
+app.get('/tracker.html', (req, res) => res.sendFile(path.join(__dirname, 'tracker.html'))); // NEW TRACKER ROUTE
 
-// Initialize PostgreSQL Tables
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS attendees (
@@ -42,7 +41,6 @@ async function initDB() {
     );
   `);
   
-  // Create Volunteers table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS volunteers (
       id SERIAL PRIMARY KEY,
@@ -54,10 +52,16 @@ async function initDB() {
     );
   `);
 
-  // Safe migration: Add new columns if they don't exist yet
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN address TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN github_link TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN itchio_link TEXT'); } catch(e){}
+  
+  // NEW: Safe migrations for cancellations and time tracking
+  try { await pool.query("ALTER TABLE attendees ADD COLUMN status TEXT DEFAULT 'ACTIVE'"); } catch(e){}
+  try { await pool.query("ALTER TABLE attendees ADD COLUMN cancel_reason TEXT"); } catch(e){}
+  try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_state TEXT DEFAULT 'STOPPED'"); } catch(e){}
+  try { await pool.query("ALTER TABLE attendees ADD COLUMN elapsed_time INTEGER DEFAULT 0"); } catch(e){}
+  try { await pool.query("ALTER TABLE attendees ADD COLUMN timer_last_updated TEXT"); } catch(e){}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -80,54 +84,35 @@ const ADMIN_USERS = [
   { email: 'aditya@qryvon.com', password: 'sync2026aditya' }
 ];
 const ADMIN_TOKEN = 'qryvon-secure-token-2026';
-
 const otpStore = new Map();
 
-// --- ALL ROUTES ---
 app.get('/api/settings', async (req, res) => {
   const result = await pool.query('SELECT * FROM settings WHERE id = 1');
   res.json(result.rows[0]);
 });
 
 app.post('/api/admin/settings', async (req, res) => {
-  const authHeader = req.headers['authorization'];
-  if (authHeader !== `Bearer ${ADMIN_TOKEN}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const { reg_deadline, scan_date } = req.body;
-  if (!reg_deadline || !scan_date) {
-    return res.status(400).json({ error: 'Missing date values' });
-  }
+  if (!reg_deadline || !scan_date) return res.status(400).json({ error: 'Missing date values' });
 
   try {
     await pool.query(`
-      INSERT INTO settings (id, reg_deadline, scan_date)
-      VALUES (1, $1, $2)
-      ON CONFLICT (id) DO UPDATE 
-      SET reg_deadline = EXCLUDED.reg_deadline,
-          scan_date = EXCLUDED.scan_date;
+      INSERT INTO settings (id, reg_deadline, scan_date) VALUES (1, $1, $2)
+      ON CONFLICT (id) DO UPDATE SET reg_deadline = EXCLUDED.reg_deadline, scan_date = EXCLUDED.scan_date;
     `, [reg_deadline, scan_date]);
-
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Database update failed' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Database update failed' }); }
 });
 
-// UPDATED: Sending OTP via Brevo API to bypass Gmail Spam Filters
 app.post('/api/send-otp', async (req, res) => {
   const { email, role } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
   
   const safeEmail = email.toLowerCase().trim();
-  let existing;
-
-  if (role === 'volunteer') {
-    existing = await pool.query('SELECT id FROM volunteers WHERE email = $1', [safeEmail]);
-  } else {
-    existing = await pool.query('SELECT id FROM attendees WHERE email = $1', [safeEmail]);
-  }
+  let existing = role === 'volunteer' 
+    ? await pool.query('SELECT id FROM volunteers WHERE email = $1', [safeEmail])
+    : await pool.query('SELECT id FROM attendees WHERE email = $1', [safeEmail]);
 
   if (existing.rowCount > 0) return res.status(400).json({ error: 'Email already registered.' });
 
@@ -137,11 +122,7 @@ app.post('/api/send-otp', async (req, res) => {
   try {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
-      headers: { 
-        'accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'content-type': 'application/json' 
-      },
+      headers: { 'accept': 'application/json', 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json' },
       body: JSON.stringify({
         sender: { name: "Qryvon Sync", email: "contact.qryvon@gmail.com" },
         to: [{ email: email }],
@@ -150,31 +131,19 @@ app.post('/api/send-otp', async (req, res) => {
       })
     });
     
-    if (response.ok) {
-      res.json({ success: true });
-    } else {
-      const errData = await response.json();
-      console.error('Brevo API Error:', errData);
-      throw new Error('API Failed');
-    }
-  } catch (error) { 
-    res.status(500).json({ error: 'Failed to send OTP.' }); 
-  }
+    if (response.ok) res.json({ success: true });
+    else throw new Error('API Failed');
+  } catch (error) { res.status(500).json({ error: 'Failed to send OTP.' }); }
 });
+
 app.get('/api/status', async (req, res) => {
   try {
     const result = await pool.query('SELECT reg_deadline FROM settings WHERE id = 1');
     if (result.rowCount === 0) return res.json({ isOpen: true });
-
     let rawDeadline = result.rows[0].reg_deadline;
-    if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) {
-      rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
-    }
-    const deadlineMs = new Date(rawDeadline).getTime();
-    res.json({ isOpen: Date.now() <= deadlineMs });
-  } catch (err) {
-    res.status(500).json({ error: 'Status check failed' });
-  }
+    if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
+    res.json({ isOpen: Date.now() <= new Date(rawDeadline).getTime() });
+  } catch (err) { res.status(500).json({ error: 'Status check failed' }); }
 });
 
 app.post('/api/register', async (req, res) => {
@@ -184,18 +153,15 @@ app.post('/api/register', async (req, res) => {
 
   const { full_name, email, phone, dob, institution, team_size, team_name, member2_name, member3_name, github_link, itchio_link, otp } = req.body;
   const safeEmail = email.trim().toLowerCase();
-
   const record = otpStore.get(safeEmail);
   if (!record || record.otp !== otp || Date.now() > record.expires) return res.status(400).json({ error: 'Invalid or expired OTP.' });
 
   const ticket_id = 'SYNC-' + crypto.randomBytes(4).toString('hex').toUpperCase();
-  const registered_at = new Date().toISOString();
-
   try {
     await pool.query(`
       INSERT INTO attendees (ticket_id, full_name, email, phone, dob, institution, team_size, team_name, member2_name, member3_name, github_link, itchio_link, registered_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `, [ticket_id, full_name.trim(), safeEmail, phone.trim(), dob, institution.trim(), team_size, (team_name || '').trim(), (member2_name || '').trim(), (member3_name || '').trim(), (github_link || '').trim(), (itchio_link || '').trim(), registered_at]);
+    `, [ticket_id, full_name.trim(), safeEmail, phone.trim(), dob, institution.trim(), team_size, (team_name || '').trim(), (member2_name || '').trim(), (member3_name || '').trim(), (github_link || '').trim(), (itchio_link || '').trim(), new Date().toISOString()]);
     
     otpStore.delete(safeEmail);
     const qrDataUrl = await QRCode.toDataURL(ticket_id, { errorCorrectionLevel: 'H', margin: 2, width: 320, color: { dark: '#0A1F18', light: '#E6E6FA' } });
@@ -203,11 +169,9 @@ app.post('/api/register', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
 
-// UPDATED: Volunteer Registration Route (Now with OTP and new fields)
 app.post('/api/volunteer/register', async (req, res) => {
   const { full_name, email, phone, department, address, github_link, itchio_link, otp } = req.body;
   const safeEmail = email.trim().toLowerCase();
-
   const record = otpStore.get(safeEmail);
   if (!record || record.otp !== otp || Date.now() > record.expires) return res.status(400).json({ error: 'Invalid or expired OTP.' });
 
@@ -215,27 +179,14 @@ app.post('/api/volunteer/register', async (req, res) => {
     const existing = await pool.query('SELECT id FROM volunteers WHERE email = $1', [safeEmail]);
     if (existing.rowCount > 0) return res.status(400).json({ error: 'Email already registered as volunteer.' });
 
-    const registered_at = new Date().toISOString();
     await pool.query(`
       INSERT INTO volunteers (full_name, email, phone, department, address, github_link, itchio_link, registered_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    `, [full_name.trim(), safeEmail, phone.trim(), department.trim(), (address || '').trim(), (github_link || '').trim(), (itchio_link || '').trim(), registered_at]);
+    `, [full_name.trim(), safeEmail, phone.trim(), department.trim(), (address || '').trim(), (github_link || '').trim(), (itchio_link || '').trim(), new Date().toISOString()]);
     
     otpStore.delete(safeEmail);
     res.json({ success: true });
-  } catch (err) { 
-    res.status(500).json({ error: 'Server error.' }); 
-  }
-});
-
-app.get('/api/admin/volunteers', async (req, res) => {
-  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const result = await pool.query('SELECT * FROM volunteers ORDER BY id DESC');
-    res.json({ volunteers: result.rows });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch volunteers' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Server error.' }); }
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -244,20 +195,60 @@ app.post('/api/admin/login', (req, res) => {
   else res.status(401).json({ error: 'Invalid credentials' });
 });
 
+// NEW: Manual Check-in Route
+app.post('/api/admin/manual-checkin', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { ticket_id } = req.body;
+  try {
+    const checkinTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    await pool.query('UPDATE attendees SET checked_in = 1, checked_in_at = $1 WHERE ticket_id = $2', [checkinTime, ticket_id.trim().toUpperCase()]);
+    res.json({ success: true, checked_in_at: checkinTime });
+  } catch(err) { res.status(500).json({ error: 'Check-in failed' }); }
+});
+
+// NEW: Cancel Participant Route
+app.post('/api/admin/cancel', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { ticket_id, reason } = req.body;
+  try {
+    await pool.query("UPDATE attendees SET status = 'CANCELLED', cancel_reason = $1 WHERE ticket_id = $2", [reason, ticket_id.trim().toUpperCase()]);
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: 'Cancellation failed' }); }
+});
+
+// NEW: Time Tracking Route
+app.post('/api/admin/timer', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const { ticket_id, action } = req.body; 
+  try {
+    const att = await pool.query('SELECT timer_state, elapsed_time, timer_last_updated FROM attendees WHERE ticket_id = $1', [ticket_id]);
+    if (att.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    
+    let { timer_state, elapsed_time, timer_last_updated } = att.rows[0];
+    const now = Date.now();
+
+    if ((action === 'start' || action === 'resume') && (timer_state === 'STOPPED' || timer_state === 'PAUSED')) {
+      await pool.query("UPDATE attendees SET timer_state = 'RUNNING', timer_last_updated = $1 WHERE ticket_id = $2", [now.toString(), ticket_id]);
+    } else if ((action === 'pause' || action === 'stop') && timer_state === 'RUNNING') {
+      const timePassed = Math.floor((now - parseInt(timer_last_updated)) / 1000);
+      const newElapsed = (elapsed_time || 0) + timePassed;
+      const newState = action === 'pause' ? 'PAUSED' : 'STOPPED';
+      await pool.query("UPDATE attendees SET timer_state = $1, elapsed_time = $2, timer_last_updated = $3 WHERE ticket_id = $4", [newState, newElapsed, now.toString(), ticket_id]);
+    }
+    res.json({ success: true });
+  } catch(err) { res.status(500).json({ error: 'Timer error' }); }
+});
+
 app.post('/api/verify', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Admin Login Required' });
-
   const setRes = await pool.query('SELECT scan_date FROM settings WHERE id = 1');
   const todayIST = new Date(new Date().getTime() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
-  
-  if (todayIST !== setRes.rows[0].scan_date) {
-    return res.status(403).json({ status: 'INVALID', message: `Scans locked. Event date is set to ${setRes.rows[0].scan_date}.` });
-  }
+  if (todayIST !== setRes.rows[0].scan_date) return res.status(403).json({ status: 'INVALID', message: `Scans locked. Event date is set to ${setRes.rows[0].scan_date}.` });
 
   const attRes = await pool.query('SELECT * FROM attendees WHERE ticket_id = $1', [req.body.ticket_id?.trim().toUpperCase()]);
   if (attRes.rowCount === 0) return res.status(404).json({ status: 'INVALID', message: 'Ticket Not Found!' });
-  
   const attendee = attRes.rows[0];
+  if (attendee.status === 'CANCELLED') return res.status(403).json({ status: 'INVALID', message: 'This ticket has been cancelled.' });
   if (attendee.checked_in === 1) return res.json({ status: 'ALREADY_USED', message: 'Pass already redeemed!', checked_in_at: attendee.checked_in_at, attendee });
 
   const checkinTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
@@ -268,8 +259,13 @@ app.post('/api/verify', async (req, res) => {
 app.get('/api/admin/data', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   const result = await pool.query('SELECT * FROM attendees ORDER BY id DESC');
-  const attendees = result.rows;
-  res.json({ total: attendees.length, checkedIn: attendees.filter(a => a.checked_in === 1).length, pending: attendees.length - attendees.filter(a => a.checked_in === 1).length, attendees });
+  res.json({ attendees: result.rows });
+});
+
+app.get('/api/admin/volunteers', async (req, res) => {
+  if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
+  const result = await pool.query('SELECT * FROM volunteers ORDER BY id DESC');
+  res.json({ volunteers: result.rows });
 });
 
 const PORT = process.env.PORT || 3000;
