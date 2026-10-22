@@ -31,6 +31,7 @@
       <div><h1 class="text-3xl font-bold text-white">Qryvon Sync <span class="text-[#FFD700]">'26</span></h1><p class="text-sm text-[#C4B5FD]">Operations Dashboard</p></div>
       <div class="flex flex-wrap gap-3">
         <a href="/scanner.html" target="_blank" class="bg-[#FFD700]/10 border border-[#FFD700] text-[#FFD700] hover:bg-[#FFD700]/30 font-bold px-4 py-2 rounded-lg text-xs transition flex items-center">📷 Launch Scanner</a>
+        <a href="/tracker.html" target="_blank" class="bg-sky-500/10 border border-sky-500 text-sky-400 hover:bg-sky-500/30 font-bold px-4 py-2 rounded-lg text-xs transition flex items-center">⏱️ Time Tracker</a>
         <button onclick="loadData()" class="bg-[#C4B5FD]/20 border border-[#C4B5FD] text-[#C4B5FD] hover:bg-[#C4B5FD]/40 font-bold px-4 py-2 rounded-lg text-xs transition">🔄 Refresh</button>
         <button onclick="logout()" class="bg-red-950 border border-red-500 text-red-400 hover:bg-red-900 font-bold px-4 py-2 rounded-lg text-xs transition">Logout</button>
       </div>
@@ -55,13 +56,13 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-black/30 p-5 rounded-xl border border-[#C4B5FD]/30 shadow-lg"><p class="text-xs font-semibold text-[#C4B5FD] uppercase">Registered</p><p id="totalStat" class="text-3xl font-black mt-2 text-white">0</p></div>
+      <div class="bg-black/30 p-5 rounded-xl border border-[#C4B5FD]/30 shadow-lg"><p class="text-xs font-semibold text-[#C4B5FD] uppercase">Active Registered</p><p id="totalStat" class="text-3xl font-black mt-2 text-white">0</p></div>
       <div class="bg-black/30 p-5 rounded-xl border border-emerald-500/30 shadow-lg"><p class="text-xs font-semibold text-emerald-400 uppercase">Checked In</p><p id="checkedStat" class="text-3xl font-black mt-2 text-emerald-400">0</p></div>
       <div class="bg-black/30 p-5 rounded-xl border border-amber-500/30 shadow-lg"><p class="text-xs font-semibold text-amber-400 uppercase">Pending</p><p id="pendingStat" class="text-3xl font-black mt-2 text-amber-400">0</p></div>
       <div class="bg-[#FFD700]/10 p-5 rounded-xl border border-[#FFD700]/40 shadow-lg"><p class="text-xs font-semibold text-[#FFD700] uppercase">Volunteers</p><p id="volunteerStat" class="text-3xl font-black mt-2 text-[#FFD700]">0</p></div>
     </div>
 
-    <h2 class="text-xl font-bold text-white mt-8">Attendees</h2>
+    <h2 class="text-xl font-bold text-white mt-8">Active Attendees</h2>
     <div class="bg-black/40 border border-[#C4B5FD]/30 rounded-xl overflow-x-auto shadow-2xl">
       <table class="w-full text-left text-xs whitespace-nowrap">
         <thead class="bg-[#C4B5FD]/10 text-[#C4B5FD] uppercase">
@@ -71,11 +72,28 @@
             <th class="p-4">Contact</th>
             <th class="p-4">Team</th>
             <th class="p-4">Links</th>
-            <th class="p-4">Status</th>
+            <th class="p-4">Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody" class="divide-y divide-[#C4B5FD]/20"></tbody>
       </table>
+    </div>
+
+    <div id="cancelledSection" class="hidden">
+      <h2 class="text-xl font-bold text-red-400 mt-10">Cancelled Participants</h2>
+      <div class="bg-black/40 border border-red-500/30 rounded-xl overflow-x-auto shadow-2xl">
+        <table class="w-full text-left text-xs whitespace-nowrap">
+          <thead class="bg-red-500/10 text-red-400 uppercase">
+            <tr>
+              <th class="p-4">Ticket</th>
+              <th class="p-4">Participant</th>
+              <th class="p-4">Team</th>
+              <th class="p-4">Reason</th>
+            </tr>
+          </thead>
+          <tbody id="cancelledTableBody" class="divide-y divide-red-500/20"></tbody>
+        </table>
+      </div>
     </div>
 
     <h2 class="text-xl font-bold text-[#FFD700] mt-10">Volunteers</h2>
@@ -130,13 +148,31 @@
         body: JSON.stringify({ reg_deadline, scan_date }) 
       });
       
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert("Settings Updated! System is live with new dates.");
-        loadSettings(); 
-      } else {
-        alert("Failed to update settings: " + (data.error || "Unauthorized"));
-      }
+      if (res.ok) { alert("Settings Updated! System is live with new dates."); loadSettings(); } 
+      else alert("Failed to update settings.");
+    }
+
+    async function manualCheckIn(ticket_id) {
+      if (!confirm(`Manually check in ticket ${ticket_id}?`)) return;
+      const res = await fetch('/api/admin/manual-checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
+        body: JSON.stringify({ ticket_id })
+      });
+      if (res.ok) loadData();
+      else alert('Check-in failed.');
+    }
+
+    async function cancelTicket(ticket_id) {
+      const reason = prompt(`Enter cancellation reason for ${ticket_id}:`);
+      if (!reason) return;
+      const res = await fetch('/api/admin/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
+        body: JSON.stringify({ ticket_id, reason })
+      });
+      if (res.ok) loadData();
+      else alert('Cancellation failed.');
     }
 
     async function loadData() {
@@ -144,13 +180,29 @@
       if (res.status === 401) return logout();
       const data = await res.json();
       
-      document.getElementById('totalStat').textContent = data.total; 
-      document.getElementById('checkedStat').textContent = data.checkedIn; 
-      document.getElementById('pendingStat').textContent = data.pending;
+      const activeAttendees = data.attendees.filter(a => (a.status || 'ACTIVE') !== 'CANCELLED');
+      const cancelledAttendees = data.attendees.filter(a => a.status === 'CANCELLED');
+
+      document.getElementById('totalStat').textContent = activeAttendees.length; 
+      document.getElementById('checkedStat').textContent = activeAttendees.filter(a => a.checked_in === 1).length; 
+      document.getElementById('pendingStat').textContent = activeAttendees.length - activeAttendees.filter(a => a.checked_in === 1).length;
       
-      document.getElementById('tableBody').innerHTML = data.attendees.map(a => {
+      document.getElementById('tableBody').innerHTML = activeAttendees.map(a => {
         const githubBadge = a.github_link ? `<a href="${a.github_link}" target="_blank" class="text-[10px] bg-slate-800 text-sky-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center mb-1">GitHub ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center mb-1">No GitHub</span>`;
         const itchBadge = a.itchio_link ? `<a href="${a.itchio_link}" target="_blank" class="text-[10px] bg-slate-800 text-red-400 border border-slate-700 px-2 py-1 rounded hover:bg-slate-700 block text-center">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 block text-center">No Itch</span>`;
+        
+        let actionsHtml = '';
+        if (a.checked_in === 1) {
+          actionsHtml = `<div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50">✅ CHECKED IN</div><div class="text-[#C4B5FD]/50 text-[10px] mt-1">${a.checked_in_at}</div>`;
+        } else {
+          actionsHtml = `
+            <div class="flex gap-2">
+              <button onclick="manualCheckIn('${a.ticket_id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-lg border border-emerald-500/50">Check In</button>
+              <button onclick="cancelTicket('${a.ticket_id}')" class="bg-red-900/50 hover:bg-red-800 text-red-400 border border-red-500/50 font-bold py-1.5 px-3 rounded-lg text-xs transition">Cancel</button>
+            </div>
+          `;
+        }
+
         return `
           <tr class="hover:bg-white/5 transition-colors">
             <td class="p-4 font-mono font-bold text-[#FFD700]">${a.ticket_id}</td>
@@ -158,10 +210,24 @@
             <td class="p-4"><div class="text-white">${a.email}</div><div class="text-[#C4B5FD]/70">${a.phone}</div><div class="text-[#C4B5FD]/70 text-[10px] uppercase mt-0.5">${a.institution}</div></td>
             <td class="p-4"><div class="text-white font-semibold">${a.team_size === 'solo' ? 'Solo' : a.team_name} <span class="text-[#C4B5FD]/50 font-normal">(${a.team_size})</span></div>${a.member2_name ? `<div class="text-[#C4B5FD]/70 text-[10px]">2: ${a.member2_name}</div>` : ''}${a.member3_name ? `<div class="text-[#C4B5FD]/70 text-[10px]">3: ${a.member3_name}</div>` : ''}</td>
             <td class="p-4">${githubBadge}${itchBadge}</td>
-            <td class="p-4"><div class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${a.checked_in ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30'}">${a.checked_in ? '✅ CHECKED IN' : '⏳ PENDING'}</div>${a.checked_in_at ? `<div class="text-[#C4B5FD]/50 text-[10px] mt-1">${a.checked_in_at}</div>` : ''}</td>
+            <td class="p-4">${actionsHtml}</td>
           </tr>
         `;
       }).join('');
+
+      if (cancelledAttendees.length > 0) {
+        document.getElementById('cancelledSection').classList.remove('hidden');
+        document.getElementById('cancelledTableBody').innerHTML = cancelledAttendees.map(a => `
+          <tr class="hover:bg-red-500/5 transition-colors">
+            <td class="p-4 font-mono font-bold text-red-400">${a.ticket_id}</td>
+            <td class="p-4"><div class="font-bold text-white text-sm">${a.full_name}</div><div class="text-red-400/70 text-xs">${a.email}</div></td>
+            <td class="p-4 text-white font-semibold">${a.team_size === 'solo' ? 'Solo' : a.team_name}</td>
+            <td class="p-4 text-red-300 italic text-xs whitespace-normal max-w-sm">${a.cancel_reason || 'No reason provided'}</td>
+          </tr>
+        `).join('');
+      } else {
+        document.getElementById('cancelledSection').classList.add('hidden');
+      }
 
       const volRes = await fetch('/api/admin/volunteers', { headers: { 'Authorization': `Bearer ${token()}` } });
       const volData = await volRes.json();
