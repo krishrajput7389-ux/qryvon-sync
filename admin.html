@@ -27,7 +27,6 @@
   </div>
 
   <div id="dashboardScreen" class="hidden p-6 max-w-[1400px] mx-auto space-y-6 pb-20">
-    <!-- Header with Search & Controls -->
     <div class="flex flex-col xl:flex-row justify-between items-start xl:items-end border-b border-[#C4B5FD]/20 pb-4 gap-4">
       <div>
         <h1 class="text-3xl font-bold text-white">Qryvon Sync <span class="text-[#FFD700]">'26</span></h1>
@@ -39,6 +38,7 @@
       </div>
 
       <div class="flex flex-wrap gap-2 w-full xl:w-auto">
+        <a href="/judging.html" target="_blank" class="bg-purple-500/10 border border-purple-500 text-purple-400 hover:bg-purple-500/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">⚖️ Judging</a>
         <button onclick="document.getElementById('broadcastModal').classList.remove('hidden')" class="bg-[#FFD700]/10 border border-[#FFD700] text-[#FFD700] hover:bg-[#FFD700]/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">📢 Broadcast</button>
         <button onclick="exportCSV()" class="bg-emerald-500/10 border border-emerald-500 text-emerald-400 hover:bg-emerald-500/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">⬇️ Export CSV</button>
         <a href="/scanner.html" target="_blank" class="bg-sky-500/10 border border-sky-500 text-sky-400 hover:bg-sky-500/30 font-bold px-3 py-2 rounded-lg text-xs transition flex items-center">📷 Scanner</a>
@@ -199,13 +199,8 @@
       status.textContent = 'Contacting Brevo mail servers...';
 
       try {
-        const res = await fetch('/api/admin/broadcast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-          body: JSON.stringify({ target, subject, message })
-        });
+        const res = await fetch('/api/admin/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }, body: JSON.stringify({ target, subject, message }) });
         const data = await res.json();
-        
         if (res.ok) {
           status.classList.replace('text-[#FFD700]', 'text-emerald-400');
           status.textContent = `Success! Dispatched to ${data.count} recipients.`;
@@ -217,9 +212,7 @@
             btn.disabled = false;
             btn.textContent = 'Send Broadcast';
           }, 2500);
-        } else {
-          throw new Error(data.error || 'Dispatch failed');
-        }
+        } else throw new Error(data.error || 'Dispatch failed');
       } catch (err) {
         status.classList.replace('text-[#FFD700]', 'text-red-400');
         status.textContent = err.message || 'Network error.';
@@ -235,7 +228,6 @@
 
       const vRes = await fetch('/api/admin/volunteers', { headers: { 'Authorization': `Bearer ${token()}` } });
       globalData.volunteers = (await vRes.json()).volunteers;
-
       renderDashboard();
     }
 
@@ -255,7 +247,6 @@
         if (a.checked_out === 1) actions = `<div class="text-[10px] text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/50">🚪 Out: ${a.checked_out_at}<br><i class="text-sky-300">Note: ${a.checkout_remark}</i></div>`;
         else if (a.checked_in === 1) actions = `<div class="text-[10px] text-emerald-400 mb-1">✅ In: ${a.checked_in_at}</div><button onclick="manualAction('attendee-checkout', {ticket_id: '${a.ticket_id}', remark: prompt('Checkout note:')})" class="bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded text-xs w-full">Check Out</button>`;
         else actions = `<div class="flex gap-2"><button onclick="if(confirm('Check in?')) manualAction('manual-checkin', {ticket_id: '${a.ticket_id}'})" class="bg-emerald-600 px-3 py-1.5 rounded-lg text-white text-xs">Check In</button><button onclick="manualAction('cancel', {ticket_id: '${a.ticket_id}', reason: prompt('Reason:')})" class="bg-red-900/50 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg text-xs">Cancel</button></div>`;
-
         return `<tr class="data-row hover:bg-white/5"><td class="p-4 font-mono text-[#FFD700]">${a.ticket_id}</td><td class="p-4 text-white">${a.full_name}<br><span class="text-[#C4B5FD]/70 text-xs">DOB: ${a.dob}</span></td><td class="p-4 text-white">${a.email}<br><span class="text-[#C4B5FD]/70 text-[10px]">${a.phone} | ${a.institution}</span></td><td class="p-4 text-white">${a.team_name || 'Solo'}</td><td class="p-4">${links || '-'}</td><td class="p-4">${actions}</td></tr>`;
       }).join('');
 
@@ -274,7 +265,6 @@
         if (v.checked_out === 1) actions = `<div class="text-[10px] text-slate-400 bg-slate-500/20 px-2 py-1 rounded border border-slate-500/50">🚪 Out: ${v.checked_out_at}<br><i class="text-sky-300">Note: ${v.checkout_remark}</i></div>`;
         else if (v.checked_in === 1) actions = `<div class="text-[10px] text-emerald-400 mb-1">✅ In: ${v.checked_in_at}</div><button onclick="manualAction('volunteer-checkout', {email: '${v.email}', remark: prompt('Checkout note:')})" class="bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded text-xs w-full">Check Out</button>`;
         else actions = `<div class="flex gap-2"><button onclick="if(confirm('Check in?')) manualAction('volunteer-checkin', {email: '${v.email}'})" class="bg-emerald-600 px-3 py-1.5 rounded-lg text-white text-xs">Check In</button><button onclick="manualAction('volunteer-cancel', {email: '${v.email}', reason: prompt('Reason:')})" class="bg-red-900/50 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg text-xs">Cancel</button></div>`;
-
         return `<tr class="data-row hover:bg-white/5"><td class="p-4 text-white">${v.full_name}</td><td class="p-4 text-white">${v.email}<br><span class="text-[#C4B5FD]/70 text-xs">${v.phone}</span></td><td class="p-4 text-[#FFD700]">${v.department}</td><td class="p-4">${links || '-'}</td><td class="p-4">${actions}</td></tr>`;
       }).join('');
 
@@ -291,14 +281,14 @@
 
     function exportCSV() {
       const escape = text => `"${String(text || '').replace(/"/g, '""')}"`;
-      let csv = "Type,Ticket/Email,Name,Phone,Role/Dept,Status,In Time,Out Time,Remark\n";
+      let csv = "Type,Ticket/Email,Name,Phone,Role/Dept,Status,In Time,Out Time,Remark,Tech Score,Innovation Score,Total Score\n";
       globalData.attendees.forEach(a => {
         let status = a.status === 'CANCELLED' ? 'Cancelled' : (a.checked_out ? 'Checked Out' : (a.checked_in ? 'Checked In' : 'Pending'));
-        csv += `Attendee,${escape(a.ticket_id)},${escape(a.full_name)},${escape(a.phone)},${escape(a.team_name || 'Solo')},${status},${escape(a.checked_in_at)},${escape(a.checked_out_at)},${escape(a.checkout_remark || a.cancel_reason)}\n`;
+        csv += `Attendee,${escape(a.ticket_id)},${escape(a.full_name)},${escape(a.phone)},${escape(a.team_name || 'Solo')},${status},${escape(a.checked_in_at)},${escape(a.checked_out_at)},${escape(a.checkout_remark || a.cancel_reason)},${a.score_tech || 0},${a.score_innovation || 0},${a.total_score || 0}\n`;
       });
       globalData.volunteers.forEach(v => {
         let status = v.status === 'CANCELLED' ? 'Cancelled' : (v.checked_out ? 'Checked Out' : (v.checked_in ? 'Checked In' : 'Pending'));
-        csv += `Volunteer,${escape(v.email)},${escape(v.full_name)},${escape(v.phone)},${escape(v.department)},${status},${escape(v.checked_in_at)},${escape(v.checked_out_at)},${escape(v.checkout_remark || v.cancel_reason)}\n`;
+        csv += `Volunteer,${escape(v.email)},${escape(v.full_name)},${escape(v.phone)},${escape(v.department)},${status},${escape(v.checked_in_at)},${escape(v.checked_out_at)},${escape(v.checkout_remark || v.cancel_reason)},0,0,0\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const a = document.createElement('a');
