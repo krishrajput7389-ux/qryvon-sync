@@ -1,1 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Qryvon Sync | Judging Matrix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .bg-qryvon-dark { background-color: #0A1F18; }
+  </style>
+</head>
+<body class="bg-qryvon-dark text-slate-100 min-h-screen font-sans pb-20">
 
+  <div id="loginScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-qryvon-dark px-4 hidden">
+    <div class="text-center">
+      <h2 class="text-xl font-bold text-white mb-4">Admin Access Required</h2>
+      <a href="/admin.html" class="bg-[#FFD700] text-[#0A1F18] font-bold py-2 px-6 rounded-lg text-sm hover:bg-yellow-500 transition">Go to Login</a>
+    </div>
+  </div>
+
+  <div id="judgingScreen" class="p-6 max-w-[1200px] mx-auto space-y-8">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-purple-500/20 pb-4 gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Judging <span class="text-purple-400">Matrix</span></h1>
+        <p class="text-sm text-purple-300/70">Evaluate technical complexity and innovation</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/admin.html" class="bg-purple-500/10 border border-purple-500/50 text-purple-400 hover:bg-purple-500/30 font-bold px-4 py-2 rounded-lg text-xs transition">Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Leaderboard Section -->
+    <div class="bg-black/40 border border-[#FFD700]/30 rounded-2xl p-6 shadow-2xl">
+      <h2 class="text-xl font-bold text-[#FFD700] mb-4 flex items-center gap-2">🏆 Live Leaderboard</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs whitespace-nowrap">
+          <thead class="bg-[#FFD700]/10 text-[#FFD700] uppercase">
+            <tr>
+              <th class="p-3 rounded-tl-lg">Rank</th>
+              <th class="p-3">Team / Participant</th>
+              <th class="p-3 text-center">Tech</th>
+              <th class="p-3 text-center">Innovation</th>
+              <th class="p-3 text-center rounded-tr-lg">Total Score</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody" class="divide-y divide-[#FFD700]/20">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Scoring Matrix Section -->
+    <h2 class="text-xl font-bold text-white mt-10">Pending Evaluations</h2>
+    <div class="bg-black/40 border border-purple-500/30 rounded-2xl p-6 shadow-2xl">
+      <div class="grid grid-cols-1 gap-4" id="scoringContainer">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const token = () => localStorage.getItem('qryvon_admin_token');
+    let attendeesData = [];
+
+    function checkAuth() {
+      if (!token()) {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('judgingScreen').classList.add('hidden');
+      } else {
+        loadData();
+      }
+    }
+
+    async function loadData() {
+      const res = await fetch('/api/admin/data', { headers: { 'Authorization': `Bearer ${token()}` } });
+      if (res.status === 401) {
+        localStorage.removeItem('qryvon_admin_token');
+        return checkAuth();
+      }
+      const data = await res.json();
+      
+      // Only show people who actually checked into the building
+      attendeesData = data.attendees.filter(a => a.checked_in === 1 && a.status !== 'CANCELLED');
+      renderMatrix();
+    }
+
+    async function submitScore(ticket_id) {
+      const techInput = document.getElementById(`tech_${ticket_id}`).value;
+      const innInput = document.getElementById(`inn_${ticket_id}`).value;
+      
+      const tech = parseInt(techInput) || 0;
+      const innovation = parseInt(innInput) || 0;
+
+      if (tech < 0 || tech > 10 || innovation < 0 || innovation > 10) {
+        alert("Scores must be between 0 and 10.");
+        return;
+      }
+
+      const btn = document.getElementById(`btn_${ticket_id}`);
+      btn.textContent = "Saving...";
+
+      const res = await fetch('/api/admin/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
+        body: JSON.stringify({ ticket_id, tech, innovation })
+      });
+
+      if (res.ok) loadData();
+      else alert('Failed to save score.');
+    }
+
+    function renderMatrix() {
+      const judgedTeams = attendeesData.filter(a => a.is_judged === 1).sort((a, b) => b.total_score - a.total_score);
+      const pendingTeams = attendeesData.filter(a => a.is_judged !== 1);
+
+      // Render Leaderboard
+      const lbBody = document.getElementById('leaderboardBody');
+      if (judgedTeams.length === 0) {
+        lbBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-[#FFD700]/50 italic">No teams have been scored yet.</td></tr>`;
+      } else {
+        lbBody.innerHTML = judgedTeams.map((a, index) => `
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="p-3 font-black text-lg ${index === 0 ? 'text-[#FFD700]' : (index === 1 ? 'text-slate-300' : (index === 2 ? 'text-amber-600' : 'text-white'))}">#${index + 1}</td>
+            <td class="p-3 font-bold text-white">${a.team_size === 'solo' ? a.full_name : a.team_name} <span class="text-purple-300/50 font-normal text-[10px]">(${a.ticket_id})</span></td>
+            <td class="p-3 text-center text-purple-300 font-mono">${a.score_tech}/10</td>
+            <td class="p-3 text-center text-purple-300 font-mono">${a.score_innovation}/10</td>
+            <td class="p-3 text-center font-black text-[#FFD700] text-lg">${a.total_score}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Render Scoring Cards
+      const container = document.getElementById('scoringContainer');
+      if (pendingTeams.length === 0) {
+        container.innerHTML = `<div class="text-center p-10 text-purple-300/50">All checked-in teams have been scored!</div>`;
+        return;
+      }
+
+      container.innerHTML = pendingTeams.map(a => {
+        const githubBadge = a.github_link ? `<a href="${a.github_link}" target="_blank" class="bg-slate-800 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg text-xs hover:bg-slate-700 font-bold transition">GitHub ↗</a>` : `<span class="text-xs text-slate-500 italic">No GitHub</span>`;
+        const itchBadge = a.itchio_link ? `<a href="${a.itchio_link}" target="_blank" class="bg-slate-800 text-red-400 border border-slate-700 px-3 py-1.5 rounded-lg text-xs hover:bg-slate-700 font-bold transition">Itch.io ↗</a>` : `<span class="text-xs text-slate-500 italic">No Itch</span>`;
+
+        return `
+          <div class="bg-black/60 border border-purple-500/20 p-5 rounded-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div class="flex-1">
+              <h3 class="text-xl font-bold text-white">${a.team_size === 'solo' ? a.full_name : a.team_name}</h3>
+              <p class="text-xs text-purple-300 font-mono mt-1">${a.ticket_id} | ${a.team_size === 'solo' ? 'Solo' : 'Team'}</p>
+              <div class="flex gap-3 mt-3">
+                ${githubBadge} ${itchBadge}
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap lg:flex-nowrap gap-4 w-full lg:w-auto bg-black/40 p-4 rounded-xl border border-white/5">
+              <div>
+                <label class="block text-[10px] uppercase font-bold text-purple-300 mb-1">Tech (1-10)</label>
+                <input type="number" id="tech_${a.ticket_id}" min="0" max="10" placeholder="0" class="w-20 bg-black/80 border border-purple-500/50 rounded-lg px-3 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase font-bold text-purple-300 mb-1">Innovation (1-10)</label>
+                <input type="number" id="inn_${a.ticket_id}" min="0" max="10" placeholder="0" class="w-20 bg-black/80 border border-purple-500/50 rounded-lg px-3 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+              </div>
+              <div class="flex items-end">
+                <button id="btn_${a.ticket_id}" onclick="submitScore('${a.ticket_id}')" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition h-[42px]">Save Score</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>
