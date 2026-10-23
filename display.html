@@ -6,16 +6,17 @@
   <title>Qryvon Sync | Live Display</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Prevent the page from ever scrolling */
     body { background-color: #0A1F18; overflow: hidden; }
     
     .marquee-container { overflow: hidden; white-space: nowrap; width: 100%; position: relative; }
     .marquee-content {
       display: inline-block;
-      animation: marquee 20s linear infinite;
+      animation: marquee 25s linear infinite;
     }
     
     @keyframes marquee {
-      0% { transform: translateX(100vw); }
+      0% { transform: translateX(100%); }
       100% { transform: translateX(-100%); }
     }
 
@@ -27,46 +28,48 @@
     }
   </style>
 </head>
+<!-- Use flex-col and h-screen to strictly contain the layout without overlapping -->
 <body class="text-slate-100 h-screen flex flex-col font-sans bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]">
 
-  <!-- Main Content Area -->
-  <div class="flex-1 flex flex-col items-center justify-center p-8 text-center relative z-10">
+  <!-- Main Content Area: flex-1 makes it fill the space above the marquee -->
+  <div class="flex-1 flex flex-col items-center justify-center p-4 md:p-6 text-center relative z-10 w-full max-w-6xl mx-auto">
     
     <!-- Branding -->
-    <div class="mb-12">
-      <h1 class="text-6xl md:text-8xl font-black text-white tracking-widest glow-text">
+    <div class="mb-6 md:mb-8">
+      <h1 class="text-5xl md:text-7xl font-black text-white tracking-widest glow-text leading-tight">
         QRYVON SYNC <span class="text-[#FFD700] gold-glow">'26</span>
       </h1>
-      <p class="text-2xl text-[#C4B5FD] font-mono mt-4 uppercase tracking-[0.3em]">Muzaffarpur Edition</p>
+      <p class="text-xl md:text-2xl text-[#C4B5FD] font-mono mt-1 uppercase tracking-[0.3em]">Muzaffarpur Edition</p>
     </div>
 
     <!-- Active Hackers Stat -->
-    <div class="bg-black/40 border border-[#C4B5FD]/30 p-8 rounded-3xl shadow-2xl backdrop-blur-md mb-12">
-      <p class="text-xl text-[#C4B5FD] font-bold uppercase tracking-widest mb-2">Hackers in Venue</p>
-      <div id="activeCount" class="text-7xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]">--</div>
+    <div class="bg-black/40 border border-[#C4B5FD]/30 p-6 md:p-8 rounded-3xl shadow-2xl backdrop-blur-md mb-6 md:mb-8 w-full max-w-md">
+      <p class="text-sm md:text-lg text-[#C4B5FD] font-bold uppercase tracking-widest mb-2">Hackers in Venue</p>
+      <!-- leading-none prevents the tall font from messing up the container height -->
+      <div id="activeCount" class="text-6xl md:text-7xl font-black text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)] leading-none">--</div>
     </div>
 
     <!-- Hacking Deadline Countdown -->
-    <div class="w-full max-w-4xl bg-black/60 border border-[#FFD700]/30 rounded-3xl p-10 shadow-[0_0_50px_rgba(255,215,0,0.1)]">
-      <p class="text-lg text-[#FFD700] font-bold uppercase tracking-widest mb-6">Time Remaining</p>
-      <div class="grid grid-cols-4 gap-4 md:gap-8 text-center">
-        <div class="flex flex-col"><span id="days" class="text-5xl md:text-7xl font-black text-white">00</span><span class="text-sm text-slate-400 mt-2 uppercase tracking-widest">Days</span></div>
-        <div class="flex flex-col"><span id="hours" class="text-5xl md:text-7xl font-black text-white">00</span><span class="text-sm text-slate-400 mt-2 uppercase tracking-widest">Hours</span></div>
-        <div class="flex flex-col"><span id="mins" class="text-5xl md:text-7xl font-black text-white">00</span><span class="text-sm text-slate-400 mt-2 uppercase tracking-widest">Mins</span></div>
-        <div class="flex flex-col"><span id="secs" class="text-5xl md:text-7xl font-black text-[#FFD700]">00</span><span class="text-sm text-[#FFD700]/60 mt-2 uppercase tracking-widest">Secs</span></div>
+    <div class="w-full max-w-3xl bg-black/60 border border-[#FFD700]/30 rounded-3xl p-6 md:p-10 shadow-[0_0_50px_rgba(255,215,0,0.1)]">
+      <p class="text-sm md:text-lg text-[#FFD700] font-bold uppercase tracking-widest mb-4">Time Remaining</p>
+      <div class="grid grid-cols-4 gap-2 md:gap-6 text-center">
+        <div class="flex flex-col items-center"><span id="days" class="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-none">00</span><span class="text-[10px] md:text-sm text-slate-400 mt-2 md:mt-3 uppercase tracking-widest">Days</span></div>
+        <div class="flex flex-col items-center"><span id="hours" class="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-none">00</span><span class="text-[10px] md:text-sm text-slate-400 mt-2 md:mt-3 uppercase tracking-widest">Hours</span></div>
+        <div class="flex flex-col items-center"><span id="mins" class="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-none">00</span><span class="text-[10px] md:text-sm text-slate-400 mt-2 md:mt-3 uppercase tracking-widest">Mins</span></div>
+        <div class="flex flex-col items-center"><span id="secs" class="text-4xl md:text-6xl lg:text-7xl font-black text-[#FFD700] leading-none">00</span><span class="text-[10px] md:text-sm text-[#FFD700]/60 mt-2 md:mt-3 uppercase tracking-widest">Secs</span></div>
       </div>
     </div>
 
   </div>
 
-  <!-- Scrolling Marquee of Checked-In Teams -->
-  <div class="w-full bg-black/80 border-t border-[#C4B5FD]/20 py-4 absolute bottom-0">
+  <!-- Scrolling Marquee: shrink-0 keeps it exactly at the bottom without overlapping -->
+  <div class="w-full bg-black/90 border-t border-[#C4B5FD]/20 py-3 shrink-0 z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
     <div class="flex items-center">
-      <div class="bg-emerald-500/20 text-emerald-400 px-6 py-2 border-r border-[#C4B5FD]/20 font-bold uppercase tracking-widest text-sm z-20 shadow-[10px_0_20px_rgba(0,0,0,0.8)] shrink-0">
-        🟢 LIVE CHECK-INS
+      <div class="bg-emerald-500/20 text-emerald-400 px-4 md:px-6 py-2 border-r border-[#C4B5FD]/20 font-bold uppercase tracking-widest text-xs md:text-sm z-20 shrink-0 flex items-center gap-2">
+        <span class="animate-pulse">🟢</span> LIVE CHECK-INS
       </div>
-      <div class="marquee-container flex-1">
-        <div id="teamMarquee" class="marquee-content text-xl font-bold text-white tracking-wider flex gap-12">
+      <div class="marquee-container flex-1 ml-4">
+        <div id="teamMarquee" class="marquee-content text-lg md:text-xl font-bold text-white tracking-wider flex gap-12 items-center">
           <!-- Populated by JS -->
           Waiting for hackers to arrive...
         </div>
@@ -87,7 +90,8 @@
 
         const marquee = document.getElementById('teamMarquee');
         if (data.teams && data.teams.length > 0) {
-          marquee.innerHTML = data.teams.map(t => `<span class="text-[#FFD700]">★</span> ${t}`).join(' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ');
+          // Added visual separators to make the scrolling text cleaner
+          marquee.innerHTML = data.teams.map(t => `<span class="text-[#FFD700]">★</span> ${t}`).join(' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ');
         } else {
           marquee.innerHTML = "Awaiting first check-ins...";
         }
@@ -116,7 +120,6 @@
       document.getElementById('secs').textContent = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
     }
 
-    // Initialize and run loops
     fetchDisplayData();
     setInterval(fetchDisplayData, 10000); // Pull new check-ins every 10 seconds
     setInterval(updateCountdown, 1000);   // Update clock every second
