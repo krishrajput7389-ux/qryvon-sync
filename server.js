@@ -72,11 +72,19 @@ async function initDB() {
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checked_out_at TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checkout_remark TEXT'); } catch(e){}
+  
   try { await pool.query('ALTER TABLE attendees ADD COLUMN score_tech INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN score_innovation INTEGER DEFAULT 0'); } catch(e){}
-  try { await pool.query('ALTER TABLE attendees ADD COLUMN score_coop INTEGER DEFAULT 0'); } catch(e){} // NEW COLUMN
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN score_coop INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN total_score INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN is_judged INTEGER DEFAULT 0'); } catch(e){}
+  
+  // NEW: Update columns to accept decimal (FLOAT) and add one-time edit lock
+  try { await pool.query('ALTER TABLE attendees ALTER COLUMN score_tech TYPE FLOAT'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ALTER COLUMN score_innovation TYPE FLOAT'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ALTER COLUMN score_coop TYPE FLOAT'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ALTER COLUMN total_score TYPE FLOAT'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN edit_locked INTEGER DEFAULT 0'); } catch(e){}
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -319,19 +327,30 @@ app.post('/api/admin/timer', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Timer error' }); }
 });
 
+// UPDATED: Floating point scores and edit locking
 app.post('/api/admin/score', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   
-  // Accept the new coop parameter
   const { ticket_ids, tech, innovation, coop } = req.body;
   if (!ticket_ids || !Array.isArray(ticket_ids)) return res.status(400).json({ error: 'Missing ticket IDs array' });
 
-  // Update total calculation to include the 5-point cooperation score
-  const total = parseInt(tech || 0) + parseInt(innovation || 0) + parseInt(coop || 0);
+  // Calculate float totals accurately
+  const t = parseFloat(tech || 0);
+  const i = parseFloat(innovation || 0);
+  const c = parseFloat(coop || 0);
+  const total = parseFloat((t + i + c).toFixed(1)); 
   
   try {
     for (let id of ticket_ids) {
-      await pool.query('UPDATE attendees SET score_tech = $1, score_innovation = $2, score_coop = $3, total_score = $4, is_judged = 1 WHERE ticket_id = $5', [tech, innovation, coop, total, id.trim().toUpperCase()]);
+      const check = await pool.query('SELECT is_judged, edit_locked FROM attendees WHERE ticket_id = $1', [id.trim().toUpperCase()]);
+      if (check.rowCount > 0) {
+        if (check.rows[0].edit_locked === 1) continue; // Deny update if they already used their 1 edit
+        
+        // If the team was already judged (is_judged = 1), then this save action is an Edit. Lock it.
+        const newLockedStatus = check.rows[0].is_judged === 1 ? 1 : 0;
+        
+        await pool.query('UPDATE attendees SET score_tech = $1, score_innovation = $2, score_coop = $3, total_score = $4, is_judged = 1, edit_locked = $5 WHERE ticket_id = $6', [t, i, c, total, newLockedStatus, id.trim().toUpperCase()]);
+      }
     }
     res.json({ success: true });
   } catch(err) { res.status(500).json({ error: 'Scoring failed' }); }
