@@ -279,16 +279,16 @@
       document.querySelectorAll('.data-row').forEach(row => row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none');
     }
 
-    function exportCSV() {
+   function exportCSV() {
       const escape = text => `"${String(text || '').replace(/"/g, '""')}"`;
-      let csv = "Type,Ticket/Email,Name,Phone,Role/Dept,Status,In Time,Out Time,Remark,Tech Score,Innovation Score,Total Score\n";
+      let csv = "Type,Ticket/Email,Name,Phone,Role/Dept,Status,In Time,Out Time,Remark,Tech Score,Innovation Score,Coop Score,Total Score\n";
       globalData.attendees.forEach(a => {
         let status = a.status === 'CANCELLED' ? 'Cancelled' : (a.checked_out ? 'Checked Out' : (a.checked_in ? 'Checked In' : 'Pending'));
-        csv += `Attendee,${escape(a.ticket_id)},${escape(a.full_name)},${escape(a.phone)},${escape(a.team_name || 'Solo')},${status},${escape(a.checked_in_at)},${escape(a.checked_out_at)},${escape(a.checkout_remark || a.cancel_reason)},${a.score_tech || 0},${a.score_innovation || 0},${a.total_score || 0}\n`;
+        csv += `Attendee,${escape(a.ticket_id)},${escape(a.full_name)},${escape(a.phone)},${escape(a.team_name || 'Solo')},${status},${escape(a.checked_in_at)},${escape(a.checked_out_at)},${escape(a.checkout_remark || a.cancel_reason)},${a.score_tech || 0},${a.score_innovation || 0},${a.score_coop || 0},${a.total_score || 0}\n`;
       });
       globalData.volunteers.forEach(v => {
         let status = v.status === 'CANCELLED' ? 'Cancelled' : (v.checked_out ? 'Checked Out' : (v.checked_in ? 'Checked In' : 'Pending'));
-        csv += `Volunteer,${escape(v.email)},${escape(v.full_name)},${escape(v.phone)},${escape(v.department)},${status},${escape(v.checked_in_at)},${escape(v.checked_out_at)},${escape(v.checkout_remark || v.cancel_reason)},0,0,0\n`;
+        csv += `Volunteer,${escape(v.email)},${escape(v.full_name)},${escape(v.phone)},${escape(v.department)},${status},${escape(v.checked_in_at)},${escape(v.checked_out_at)},${escape(v.checkout_remark || v.cancel_reason)},0,0,0,0\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const a = document.createElement('a');
