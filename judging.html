@@ -23,7 +23,7 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-purple-500/20 pb-4 gap-4">
       <div>
         <h1 class="text-3xl font-bold text-white">Judging <span class="text-purple-400">Matrix</span></h1>
-        <p class="text-sm text-purple-300/70">Evaluate technical complexity and innovation</p>
+        <p class="text-sm text-purple-300/70">Evaluate technical complexity, innovation, and cooperation</p>
       </div>
       <div class="flex gap-3">
         <a href="/admin.html" class="bg-purple-500/10 border border-purple-500/50 text-purple-400 hover:bg-purple-500/30 font-bold px-4 py-2 rounded-lg text-xs transition">Dashboard</a>
@@ -41,6 +41,7 @@
               <th class="p-3">Team Name</th>
               <th class="p-3 text-center">Tech</th>
               <th class="p-3 text-center">Innovation</th>
+              <th class="p-3 text-center">Coop</th>
               <th class="p-3 text-center rounded-tr-lg">Total Score</th>
             </tr>
           </thead>
@@ -82,10 +83,8 @@
       }
       const data = await res.json();
       
-      // Filter for active, checked-in participants
       const activeAttendees = data.attendees.filter(a => a.checked_in === 1 && a.status !== 'CANCELLED');
       
-      // Group participants by Team Name
       groupedTeamsMap = new Map();
       activeAttendees.forEach(a => {
         let key = a.team_size === 'solo' ? `SOLO_${a.ticket_id}` : `TEAM_${(a.team_name || 'Unnamed').trim().toLowerCase()}`;
@@ -99,6 +98,7 @@
             members: [],
             score_tech: a.score_tech,
             score_innovation: a.score_innovation,
+            score_coop: a.score_coop,
             total_score: a.total_score,
             is_judged: a.is_judged,
             github_link: a.github_link,
@@ -108,12 +108,12 @@
         
         let team = groupedTeamsMap.get(key);
         team.ticket_ids.push(a.ticket_id);
-        team.members.push({ name: a.full_name, email: a.email, ticket: a.ticket_id });
         
-        // Grab links if any member provided them
+        // Pass the checkout remark directly into the member object so judges can see it
+        team.members.push({ name: a.full_name, email: a.email, ticket: a.ticket_id, remark: a.checkout_remark });
+        
         if (a.github_link) team.github_link = a.github_link;
         if (a.itchio_link) team.itchio_link = a.itchio_link;
-        // If one member is marked judged, the team is judged
         if (a.is_judged === 1) team.is_judged = 1;
       });
 
@@ -124,23 +124,24 @@
       const team = groupedTeamsMap.get(teamKey);
       const techInput = document.getElementById(`tech_${teamKey}`).value;
       const innInput = document.getElementById(`inn_${teamKey}`).value;
+      const coopInput = document.getElementById(`coop_${teamKey}`).value;
       
       const tech = parseInt(techInput) || 0;
       const innovation = parseInt(innInput) || 0;
+      const coop = parseInt(coopInput) || 0;
 
-      if (tech < 0 || tech > 10 || innovation < 0 || innovation > 10) {
-        alert("Scores must be between 0 and 10.");
+      if (tech < 0 || tech > 10 || innovation < 0 || innovation > 10 || coop < 0 || coop > 5) {
+        alert("Tech and Innovation must be 0-10. Cooperation must be 0-5.");
         return;
       }
 
       const btn = document.getElementById(`btn_${teamKey}`);
       btn.textContent = "Saving...";
 
-      // Send the entire array of ticket IDs to update all team members at once
       const res = await fetch('/api/admin/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` },
-        body: JSON.stringify({ ticket_ids: team.ticket_ids, tech, innovation })
+        body: JSON.stringify({ ticket_ids: team.ticket_ids, tech, innovation, coop })
       });
 
       if (res.ok) loadData();
@@ -152,10 +153,9 @@
       const judgedTeams = allTeams.filter(t => t.is_judged === 1).sort((a, b) => b.total_score - a.total_score);
       const pendingTeams = allTeams.filter(t => t.is_judged !== 1);
 
-      // Render Leaderboard
       const lbBody = document.getElementById('leaderboardBody');
       if (judgedTeams.length === 0) {
-        lbBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-[#FFD700]/50 italic">No teams have been scored yet.</td></tr>`;
+        lbBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-[#FFD700]/50 italic">No teams have been scored yet.</td></tr>`;
       } else {
         lbBody.innerHTML = judgedTeams.map((team, index) => {
           const memberNames = team.members.map(m => m.name).join(' • ');
@@ -168,13 +168,13 @@
               </td>
               <td class="p-3 text-center text-purple-300 font-mono">${team.score_tech}/10</td>
               <td class="p-3 text-center text-purple-300 font-mono">${team.score_innovation}/10</td>
+              <td class="p-3 text-center text-purple-300 font-mono">${team.score_coop}/5</td>
               <td class="p-3 text-center font-black text-[#FFD700] text-lg">${team.total_score}</td>
             </tr>
           `;
         }).join('');
       }
 
-      // Render Scoring Cards
       const container = document.getElementById('scoringContainer');
       if (pendingTeams.length === 0) {
         container.innerHTML = `<div class="text-center p-10 text-purple-300/50">All checked-in teams have been scored!</div>`;
@@ -185,10 +185,11 @@
         const githubBadge = team.github_link ? `<a href="${team.github_link}" target="_blank" class="bg-slate-800 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] hover:bg-slate-700 font-bold transition">GitHub ↗</a>` : `<span class="text-[10px] text-slate-500 italic mt-1">No GitHub</span>`;
         const itchBadge = team.itchio_link ? `<a href="${team.itchio_link}" target="_blank" class="bg-slate-800 text-red-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] hover:bg-slate-700 font-bold transition">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 italic mt-1">No Itch</span>`;
         
-        // Build the roster list to show underneath the team name
+        // Expose the checkout remarks inside the UI so judges can factor them in
         const rosterHtml = team.members.map(m => `
-          <div class="text-[11px] text-slate-300 mb-0.5">
-            <span class="font-bold text-white">${m.name}</span> <span class="text-purple-300/70">(${m.email})</span> <span class="text-purple-500/50 ml-1">[${m.ticket}]</span>
+          <div class="text-[11px] text-slate-300 mb-1">
+            <span class="font-bold text-white">${m.name}</span> <span class="text-purple-300/70">(${m.email})</span>
+            ${m.remark ? `<div class="text-sky-300/80 italic text-[10px] mt-0.5">↳ Note: ${m.remark}</div>` : ''}
           </div>
         `).join('');
 
@@ -212,14 +213,18 @@
             <div class="flex flex-wrap lg:flex-nowrap gap-4 w-full lg:w-auto bg-black/40 p-4 rounded-xl border border-white/5">
               <div>
                 <label class="block text-[10px] uppercase font-bold text-purple-300 mb-1">Tech (1-10)</label>
-                <input type="number" id="tech_${team.teamKey}" min="0" max="10" placeholder="0" class="w-20 bg-black/80 border border-purple-500/50 rounded-lg px-3 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+                <input type="number" id="tech_${team.teamKey}" min="0" max="10" placeholder="0" class="w-16 bg-black/80 border border-purple-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
               </div>
               <div>
                 <label class="block text-[10px] uppercase font-bold text-purple-300 mb-1">Innovation (1-10)</label>
-                <input type="number" id="inn_${team.teamKey}" min="0" max="10" placeholder="0" class="w-20 bg-black/80 border border-purple-500/50 rounded-lg px-3 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+                <input type="number" id="inn_${team.teamKey}" min="0" max="10" placeholder="0" class="w-16 bg-black/80 border border-purple-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase font-bold text-sky-300 mb-1">Coop (1-5)</label>
+                <input type="number" id="coop_${team.teamKey}" min="0" max="5" placeholder="0" class="w-16 bg-black/80 border border-sky-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-sky-400">
               </div>
               <div class="flex items-end">
-                <button id="btn_${team.teamKey}" onclick="submitScore('${team.teamKey}')" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition h-[42px] shadow-lg">Save Score</button>
+                <button id="btn_${team.teamKey}" onclick="submitScore('${team.teamKey}')" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition h-[36px] shadow-lg">Save</button>
               </div>
             </div>
           </div>
