@@ -74,6 +74,7 @@ async function initDB() {
   try { await pool.query('ALTER TABLE volunteers ADD COLUMN checkout_remark TEXT'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN score_tech INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN score_innovation INTEGER DEFAULT 0'); } catch(e){}
+  try { await pool.query('ALTER TABLE attendees ADD COLUMN score_coop INTEGER DEFAULT 0'); } catch(e){} // NEW COLUMN
   try { await pool.query('ALTER TABLE attendees ADD COLUMN total_score INTEGER DEFAULT 0'); } catch(e){}
   try { await pool.query('ALTER TABLE attendees ADD COLUMN is_judged INTEGER DEFAULT 0'); } catch(e){}
 
@@ -105,17 +106,13 @@ app.get('/api/public/display', async (req, res) => {
     const attRes = await pool.query("SELECT team_name, full_name, team_size FROM attendees WHERE checked_in = 1 AND checked_out = 0 AND status != 'CANCELLED' ORDER BY id DESC");
     const volRes = await pool.query("SELECT COUNT(*) FROM volunteers WHERE checked_in = 1 AND checked_out = 0 AND status != 'CANCELLED'");
     const setRes = await pool.query('SELECT reg_deadline FROM settings WHERE id = 1');
-    
     let rawDeadline = setRes.rows[0].reg_deadline;
     if (!rawDeadline.includes('+') && !rawDeadline.includes('Z')) rawDeadline = (rawDeadline.length === 16 ? rawDeadline + ':00' : rawDeadline) + '+05:30';
-    
-    // Deduplicate Teams for the Marquee
     const uniqueTeams = new Set();
     attRes.rows.forEach(a => {
       if (a.team_size === 'solo') uniqueTeams.add(a.full_name);
       else uniqueTeams.add((a.team_name || 'Unnamed Team').trim());
     });
-    
     const totalActive = attRes.rowCount + parseInt(volRes.rows[0].count);
     res.json({ teams: Array.from(uniqueTeams), totalActive, deadline: rawDeadline });
   } catch(err) { res.status(500).json({ error: 'Display data fetch failed' }); }
@@ -322,18 +319,19 @@ app.post('/api/admin/timer', async (req, res) => {
   } catch(err) { res.status(500).json({ error: 'Timer error' }); }
 });
 
-// UPDATED: Team Array Scoring Route
 app.post('/api/admin/score', async (req, res) => {
   if (req.headers['authorization'] !== `Bearer ${ADMIN_TOKEN}`) return res.status(401).json({ error: 'Unauthorized' });
   
-  const { ticket_ids, tech, innovation } = req.body;
+  // Accept the new coop parameter
+  const { ticket_ids, tech, innovation, coop } = req.body;
   if (!ticket_ids || !Array.isArray(ticket_ids)) return res.status(400).json({ error: 'Missing ticket IDs array' });
 
-  const total = parseInt(tech || 0) + parseInt(innovation || 0);
+  // Update total calculation to include the 5-point cooperation score
+  const total = parseInt(tech || 0) + parseInt(innovation || 0) + parseInt(coop || 0);
   
   try {
     for (let id of ticket_ids) {
-      await pool.query('UPDATE attendees SET score_tech = $1, score_innovation = $2, total_score = $3, is_judged = 1 WHERE ticket_id = $4', [tech, innovation, total, id.trim().toUpperCase()]);
+      await pool.query('UPDATE attendees SET score_tech = $1, score_innovation = $2, score_coop = $3, total_score = $4, is_judged = 1 WHERE ticket_id = $5', [tech, innovation, coop, total, id.trim().toUpperCase()]);
     }
     res.json({ success: true });
   } catch(err) { res.status(500).json({ error: 'Scoring failed' }); }
