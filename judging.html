@@ -101,6 +101,7 @@
             score_coop: a.score_coop,
             total_score: a.total_score,
             is_judged: a.is_judged,
+            edit_locked: a.edit_locked,
             github_link: a.github_link,
             itchio_link: a.itchio_link
           });
@@ -108,15 +109,22 @@
         
         let team = groupedTeamsMap.get(key);
         team.ticket_ids.push(a.ticket_id);
-        
-        // Pass the checkout remark directly into the member object so judges can see it
         team.members.push({ name: a.full_name, email: a.email, ticket: a.ticket_id, remark: a.checkout_remark });
         
         if (a.github_link) team.github_link = a.github_link;
         if (a.itchio_link) team.itchio_link = a.itchio_link;
         if (a.is_judged === 1) team.is_judged = 1;
+        if (a.edit_locked === 1) team.edit_locked = 1;
       });
 
+      renderMatrix();
+    }
+
+    // Drops the team back into pending evaluations with their previous scores pre-filled
+    function editTeam(teamKey) {
+      if(!confirm("Are you sure? You can only edit a team's score ONE time.")) return;
+      const team = groupedTeamsMap.get(teamKey);
+      team.is_judged = 0; 
       renderMatrix();
     }
 
@@ -126,9 +134,9 @@
       const innInput = document.getElementById(`inn_${teamKey}`).value;
       const coopInput = document.getElementById(`coop_${teamKey}`).value;
       
-      const tech = parseInt(techInput) || 0;
-      const innovation = parseInt(innInput) || 0;
-      const coop = parseInt(coopInput) || 0;
+      const tech = parseFloat(techInput) || 0;
+      const innovation = parseFloat(innInput) || 0;
+      const coop = parseFloat(coopInput) || 0;
 
       if (tech < 0 || tech > 10 || innovation < 0 || innovation > 10 || coop < 0 || coop > 5) {
         alert("Tech and Innovation must be 0-10. Cooperation must be 0-5.");
@@ -159,6 +167,12 @@
       } else {
         lbBody.innerHTML = judgedTeams.map((team, index) => {
           const memberNames = team.members.map(m => m.name).join(' • ');
+          
+          // Show the Edit button or a Locked badge depending on their edit_locked status
+          const editAction = team.edit_locked === 0 
+            ? `<button onclick="editTeam('${team.teamKey}')" class="bg-purple-600/40 border border-purple-500 hover:bg-purple-500 text-white px-2 py-0.5 rounded text-[9px] uppercase tracking-wider transition ml-2">Edit</button>` 
+            : `<span class="bg-red-900/40 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider ml-2">Locked</span>`;
+
           return `
             <tr class="hover:bg-white/5 transition-colors">
               <td class="p-3 font-black text-lg ${index === 0 ? 'text-[#FFD700]' : (index === 1 ? 'text-slate-300' : (index === 2 ? 'text-amber-600' : 'text-white'))}">#${index + 1}</td>
@@ -169,7 +183,10 @@
               <td class="p-3 text-center text-purple-300 font-mono">${team.score_tech}/10</td>
               <td class="p-3 text-center text-purple-300 font-mono">${team.score_innovation}/10</td>
               <td class="p-3 text-center text-purple-300 font-mono">${team.score_coop}/5</td>
-              <td class="p-3 text-center font-black text-[#FFD700] text-lg">${team.total_score}</td>
+              <td class="p-3 text-center font-black text-[#FFD700] text-lg flex items-center justify-center h-full">
+                <span>${team.total_score}</span>
+                ${editAction}
+              </td>
             </tr>
           `;
         }).join('');
@@ -185,7 +202,6 @@
         const githubBadge = team.github_link ? `<a href="${team.github_link}" target="_blank" class="bg-slate-800 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] hover:bg-slate-700 font-bold transition">GitHub ↗</a>` : `<span class="text-[10px] text-slate-500 italic mt-1">No GitHub</span>`;
         const itchBadge = team.itchio_link ? `<a href="${team.itchio_link}" target="_blank" class="bg-slate-800 text-red-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] hover:bg-slate-700 font-bold transition">Itch.io ↗</a>` : `<span class="text-[10px] text-slate-500 italic mt-1">No Itch</span>`;
         
-        // Expose the checkout remarks inside the UI so judges can factor them in
         const rosterHtml = team.members.map(m => `
           <div class="text-[11px] text-slate-300 mb-1">
             <span class="font-bold text-white">${m.name}</span> <span class="text-purple-300/70">(${m.email})</span>
@@ -213,15 +229,15 @@
             <div class="flex flex-wrap lg:flex-nowrap gap-4 w-full lg:w-auto bg-black/40 p-4 rounded-xl border border-white/5">
               <div>
                 <label class="block text-[10px] uppercase font-bold text-purple-300 mb-1">Tech (1-10)</label>
-                <input type="number" id="tech_${team.teamKey}" min="0" max="10" placeholder="0" class="w-16 bg-black/80 border border-purple-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+                <input type="number" step="0.1" id="tech_${team.teamKey}" min="0" max="10" value="${team.score_tech || ''}" placeholder="0.0" class="w-16 bg-black/80 border border-purple-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
               </div>
               <div>
                 <label class="block text-[10px] uppercase font-bold text-purple-300 mb-1">Innovation (1-10)</label>
-                <input type="number" id="inn_${team.teamKey}" min="0" max="10" placeholder="0" class="w-16 bg-black/80 border border-purple-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
+                <input type="number" step="0.1" id="inn_${team.teamKey}" min="0" max="10" value="${team.score_innovation || ''}" placeholder="0.0" class="w-16 bg-black/80 border border-purple-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-purple-400">
               </div>
               <div>
                 <label class="block text-[10px] uppercase font-bold text-sky-300 mb-1">Coop (1-5)</label>
-                <input type="number" id="coop_${team.teamKey}" min="0" max="5" placeholder="0" class="w-16 bg-black/80 border border-sky-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-sky-400">
+                <input type="number" step="0.1" id="coop_${team.teamKey}" min="0" max="5" value="${team.score_coop || ''}" placeholder="0.0" class="w-16 bg-black/80 border border-sky-500/50 rounded-lg px-2 py-2 text-white font-black text-center focus:outline-none focus:border-sky-400">
               </div>
               <div class="flex items-end">
                 <button id="btn_${team.teamKey}" onclick="submitScore('${team.teamKey}')" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition h-[36px] shadow-lg">Save</button>
